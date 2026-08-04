@@ -6,7 +6,6 @@ from pathlib import Path
 from .json_to_ttml import convert_cwi_json_to_ttml
 
 def _find_cli_entry():
-    # 1. Tenta achar subindo os diretórios da instalação
     curr = Path(__file__).resolve().parent
     while curr != curr.parent:
         cli_path = curr / "packages" / "cli" / "src" / "index.ts"
@@ -14,7 +13,6 @@ def _find_cli_entry():
             return cli_path, curr
         curr = curr.parent
 
-    # 2. Tenta achar a partir do diretório onde o terminal está rodando
     curr = Path.cwd()
     while curr != curr.parent:
         cli_path = curr / "packages" / "cli" / "src" / "index.ts"
@@ -36,10 +34,14 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     else:
         output_cwi_file = Path(output_cwi).resolve()
 
-    # --- AMBIENTE (PYTHON3 NO WINDOWS) ---
+    # --- AMBIENTE (PYTHON3 & SILENCIAMENTO DE LOGS DO WHISPER) ---
     env = os.environ.copy()
     python_bin_dir = str(Path(sys.executable).parent)
     env["PATH"] = f"{python_bin_dir}{os.pathsep}{env.get('PATH', '')}"
+    
+    # Silencia mensagens de aviso e logs do Python/Whisper para não quebrar a saída JSON da CLI
+    env["PYTHONWARNINGS"] = "ignore"
+    env["PYTHONUNBUFFERED"] = "1"
 
     python3_exe = Path(python_bin_dir) / ("python3.exe" if sys.platform == "win32" else "python3")
     if not python3_exe.exists():
