@@ -5,6 +5,26 @@ import shutil
 from pathlib import Path
 from .json_to_ttml import convert_cwi_json_to_ttml
 
+def _find_cli_entry():
+    """Localiza o arquivo de entrada da CLI em TypeScript."""
+    # 1. Procura subindo a partir deste arquivo (__file__)
+    curr = Path(__file__).resolve().parent
+    while curr != curr.parent:
+        cli_path = curr / "packages" / "cli" / "src" / "index.ts"
+        if cli_path.exists():
+            return cli_path, curr
+        curr = curr.parent
+
+    # 2. Se não encontrou subindo (ex: instalado via site-packages), tenta via diretório atual
+    curr = Path.cwd()
+    while curr != curr.parent:
+        cli_path = curr / "packages" / "cli" / "src" / "index.ts"
+        if cli_path.exists():
+            return cli_path, curr
+        curr = curr.parent
+
+    return None, None
+
 def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = False):
     """
     Processa um vídeo utilizando a CLI do OpenCaptions por trás dos panos.
@@ -13,29 +33,18 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     if not video_file.exists():
         raise FileNotFoundError(f"Arquivo de vídeo não encontrado: {video_path}")
 
-    # 1. Encontra a raiz do projeto (procura por package.json subindo os diretórios)
-    current_dir = Path(__file__).resolve().parent
-    root_dir = current_dir.parent
+    cli_entry, root_dir = _find_cli_entry()
 
-    # Se não encontrar localmente (ex: instalado via pip site-packages), usa o diretório de trabalho atual
-    cli_entry = root_dir / "packages" / "cli" / "src" / "index.ts"
-    if not cli_entry.exists():
-        # Fallback para o diretório atual onde o usuário está executando
-        root_dir = Path.cwd()
-        cli_entry = root_dir / "packages" / "cli" / "src" / "index.ts"
-
-    # Define o arquivo .cwi.json de saída
     if output_cwi is None:
         output_cwi_file = video_file.with_suffix(".cwi.json")
     else:
         output_cwi_file = Path(output_cwi).resolve()
 
-    # --- RESOLUÇÃO DO AMBIENTE (WINDOWS & PYTHON3) ---
+    # --- AMBIENTE (PYTHON3 NO WINDOWS) ---
     env = os.environ.copy()
     python_bin_dir = str(Path(sys.executable).parent)
     env["PATH"] = f"{python_bin_dir}{os.pathsep}{env.get('PATH', '')}"
 
-    # Garante executável python3.exe na pasta do venv para a CLI
     python3_exe = Path(python_bin_dir) / ("python3.exe" if sys.platform == "win32" else "python3")
     if not python3_exe.exists():
         python_exe = Path(sys.executable)
@@ -45,20 +54,19 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
             except Exception:
                 pass
 
-    # --- MONTAGEM DO COMANDO ---
-    if cli_entry.exists() and shutil.which("bun"):
+    # --- EXECUÇÃO DO COMANDO ---
+    if cli_entry and cli_entry.exists() and shutil.which("bun"):
         cmd = ["bun", str(cli_entry), "generate", str(video_file)]
     elif shutil.which("bun"):
         cmd = ["bun", "run", "opencaptions", "generate", str(video_file)]
     else:
         cmd = ["npx", "opencaptions", "generate", str(video_file)]
 
-    # Executa o processo da CLI em segundo plano
     result = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
-        cwd=root_dir if root_dir.exists() else None,
+        cwd=str(root_dir) if root_dir else None,
         env=env,
         shell=(sys.platform == "win32")
     )
