@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Speaker diarization backend using pyannote-audio.
+Speaker diarization backend using pyannote-audio + whisperx alignment.
 
 Input:  --input <video_path>, stdin receives RawTranscript JSON
 Output: JSON to stdout matching { segments: SpeakerSegment[] }:
@@ -38,17 +38,67 @@ def extract_audio(video_path: str) -> str:
     return audio_path
 
 
-def diarize_with_pyannote(audio_path: str) -> list[dict]:
-    """Run pyannote-audio speaker diarization."""
+def diarize_with_whisperx_and_pyannote(
+    audio_path: str,
+    min_speakers: int = None,
+    max_speakers: int = None
+) -> list[dict]:
+    """
+    Tenta rodar a diarização e alinhamento via WhisperX / PyAnnote.
+    """
+    hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+
+    # 1. TENTATIVA COM WHISPERX (Alinhamento em Nível de Palavra)
+    try:
+        import whisperx
+        import torch
+
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"Running WhisperX diarization on {device}...", file=sys.stderr)
+
+        # Carrega o pipeline de diarização do WhisperX (que envelopa o PyAnnote de forma otimizada)
+        diarize_model = whisperx.DiarizationPipeline(
+            use_auth_token=hf_token,
+            device=device
+        )
+
+        audio = whisperx.load_audio(audio_path)
+        diarize_df = diarize_model(
+            audio,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers
+        )
+
+        segments = []
+        speaker_map = {}
+        speaker_idx = 0
+
+        # Itera sobre os segmentos detectados pelo WhisperX
+        for _, row in diarize_df.iterrows():
+            speaker = row.get("speaker", "SPEAKER_00")
+            if speaker not in speaker_map:
+                speaker_map[speaker] = f"S{speaker_idx}"
+                speaker_idx += 1
+
+            segments.append({
+                "speaker_id": speaker_map[speaker],
+                "start": round(float(row["start"]), 3),
+                "end": round(float(row["end"]), 3),
+            })
+
+        print(f"[WhisperX] Found {len(speaker_map)} speakers, {len(segments)} segments", file=sys.stderr)
+        return merge_segments(segments, max_gap=0.1)
+
+    except Exception as e:
+        print(f"WhisperX pipeline not available or failed ({e}). Falling back to pure PyAnnote...", file=sys.stderr)
+
+    # 2. FALLBACK PARA PYANNOTE PURO (Se o WhisperX não estiver instalado/configurado)
     try:
         from pyannote.audio import Pipeline
     except ImportError:
-        raise ImportError("pyannote.audio not installed")
+        raise ImportError("Neither whisperx nor pyannote.audio are installed.")
 
     print("Loading pyannote diarization pipeline...", file=sys.stderr)
-
-    # Try to use HuggingFace token for pyannote models
-    hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
 
     try:
         pipeline = Pipeline.from_pretrained(
@@ -56,26 +106,22 @@ def diarize_with_pyannote(audio_path: str) -> list[dict]:
             use_auth_token=hf_token,
         )
     except Exception as e:
-        # Fallback: try without auth (for cached models)
         print(f"Warning: Could not load with auth token: {e}", file=sys.stderr)
-        try:
-            pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
-        except Exception as e2:
-            raise ImportError(
-                f"Cannot load pyannote model: {e2}\n"
-                "Set HF_TOKEN env var or run: huggingface-cli login"
-            )
+        pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
 
-    print("Running diarization...", file=sys.stderr)
-    diarization = pipeline(audio_path)
+    kwargs = {}
+    if min_speakers is not None:
+        kwargs["min_speakers"] = min_speakers
+    if max_speakers is not None:
+        kwargs["max_speakers"] = max_speakers
 
-    # Convert to segments
+    diarization = pipeline(audio_path, **kwargs)
+
     segments = []
     speaker_map = {}
     speaker_idx = 0
 
     for turn, _, speaker in diarization.itertracks(yield_label=True):
-        # Map pyannote speaker labels to S0, S1, etc.
         if speaker not in speaker_map:
             speaker_map[speaker] = f"S{speaker_idx}"
             speaker_idx += 1
@@ -86,47 +132,49 @@ def diarize_with_pyannote(audio_path: str) -> list[dict]:
             "end": round(turn.end, 3),
         })
 
-    # Merge adjacent segments from the same speaker
+    print(f"[PyAnnote] Found {len(speaker_map)} speakers, {len(segments)} segments", file=sys.stderr)
+    return merge_segments(segments, max_gap=0.1)
+
+
+def merge_segments(segments: list[dict], max_gap: float = 0.1) -> list[dict]:
+    """
+    Funde apenas segmentos consecutivos do MESMO locutor se a pausa for
+    menor que `max_gap` (reduzido de 0.5s para 0.1s para capturar trocas rápidas de voz).
+    """
+    if not segments:
+        return []
+
     merged = []
     for seg in segments:
         if merged and merged[-1]["speaker_id"] == seg["speaker_id"]:
-            # Extend previous segment if gap < 0.5s
-            if seg["start"] - merged[-1]["end"] < 0.5:
+            # Só funde se o mesmo falante der uma pausa menor que 100ms (0.1s)
+            if seg["start"] - merged[-1]["end"] < max_gap:
                 merged[-1]["end"] = seg["end"]
                 continue
         merged.append(seg)
 
-    print(f"Found {len(speaker_map)} speakers, {len(merged)} segments", file=sys.stderr)
     return merged
 
 
 def diarize_simple_energy(audio_path: str) -> list[dict]:
-    """
-    Fallback: simple energy-based segmentation (single speaker).
-    Used when pyannote is not available.
-    """
+    """Fallback simples de energia (único locutor) se nada mais estiver disponível."""
     try:
         import librosa
         import numpy as np
     except ImportError:
-        # Ultimate fallback: single speaker for entire duration
         return None
 
-    print("Using energy-based segmentation (pyannote not available)...", file=sys.stderr)
-
+    print("Using energy-based segmentation (fallback)...", file=sys.stderr)
     y, sr = librosa.load(audio_path, sr=16000)
     duration = len(y) / sr
 
-    # Compute RMS energy in 0.5s windows
     frame_length = int(0.5 * sr)
     hop_length = frame_length // 2
     rms = librosa.feature.rms(y=y, frame_length=frame_length, hop_length=hop_length)[0]
 
-    # Find speech regions (above 20% of max energy)
     threshold = 0.2 * np.max(rms)
     is_speech = rms > threshold
 
-    # Convert to time segments
     segments = []
     in_speech = False
     start = 0.0
@@ -154,36 +202,36 @@ def diarize_simple_energy(audio_path: str) -> list[dict]:
     if not segments:
         segments = [{"speaker_id": "S0", "start": 0.0, "end": round(duration, 3)}]
 
-    print(f"Energy segmentation: {len(segments)} segments (single speaker)", file=sys.stderr)
     return segments
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Speaker diarization")
+    parser = argparse.ArgumentParser(description="Speaker diarization using WhisperX / PyAnnote")
     parser.add_argument("--input", required=True, help="Path to video/audio file")
+    parser.add_argument("--min_speakers", type=int, default=None, help="Minimum number of speakers")
+    parser.add_argument("--max_speakers", type=int, default=None, help="Maximum number of speakers")
     args = parser.parse_args()
 
     if not os.path.exists(args.input):
         print(f"ERROR: File not found: {args.input}", file=sys.stderr)
         sys.exit(1)
 
-    # Extract audio if needed
     audio_path = args.input
     if not args.input.endswith((".wav", ".mp3", ".flac", ".ogg")):
         audio_path = extract_audio(args.input)
 
     try:
-        # Try pyannote first
         try:
-            segments = diarize_with_pyannote(audio_path)
-        except SystemExit:
-            raise
+            segments = diarize_with_whisperx_and_pyannote(
+                audio_path,
+                min_speakers=args.min_speakers,
+                max_speakers=args.max_speakers
+            )
         except Exception as e:
-            print(f"Pyannote failed: {e}, trying fallback...", file=sys.stderr)
+            print(f"Diarization failed: {e}, using energy fallback...", file=sys.stderr)
             segments = diarize_simple_energy(audio_path)
 
             if segments is None:
-                # Read duration from ffprobe
                 probe = subprocess.run(
                     ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
                      "-of", "csv=p=0", audio_path],
