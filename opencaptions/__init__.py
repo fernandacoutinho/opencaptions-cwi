@@ -65,28 +65,48 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     except Exception as e:
         raise RuntimeError(f"Erro ao decodificar JSON do transcribe.py: {e}\nSaída recebida: {result.stdout[:300]}")
 
-    formatted_words = []
-    for w in raw_data.get("words", []):
-        formatted_words.append({
-            "text": str(w.get("text", "")),
-            "start": float(w.get("start", 0.0)),
-            "end": float(w.get("end", 0.0)),
-            "weight": int(w.get("weight", 500)),
-            "size": float(w.get("size", 1.096835)),
-            "emphasis": bool(w.get("emphasis", False))
-        })
+    # O Whisper/transcribe.py costuma retornar uma lista de segmentos ou um dicionário contendo "segments" / "chunks"
+    segments = []
+    if isinstance(raw_data, dict):
+        segments = raw_data.get("segments", raw_data.get("chunks", []))
+        # Se não tiver segments mas tiver "words" soltas na raiz, tratamos como um bloco único ou agrupamos por pausas
+        if not segments and "words" in raw_data:
+            segments = [{"words": raw_data["words"]}]
+    elif isinstance(raw_data, list):
+        segments = raw_data
 
     cwi_blocks = []
-    if formatted_words:
-        cwi_blocks.append({
-            "id": str(uuid.uuid4()),
-            "start": formatted_words[0]["start"],
-            "end": formatted_words[-1]["end"],
-            "speaker_id": "S0",
-            "words": formatted_words
-        })
 
-    # Aqui está o segredo: entregamos o dicionario com "captions" que o seu json_to_ttml espera
+    for seg in segments:
+        words_raw = seg.get("words", [])
+        if not words_raw:
+            continue
+
+        formatted_words = []
+        for w in words_raw:
+            formatted_words.append({
+                "text": str(w.get("text", w.get("word", ""))),
+                "start": float(w.get("start", w.get("from", 0.0))),
+                "end": float(w.get("end", w.get("to", 0.0))),
+                "weight": int(w.get("weight", 500)),
+                "size": float(w.get("size", 1.096835)),
+                "emphasis": bool(w.get("emphasis", False))
+            })
+
+        if formatted_words:
+            # Pega o start do segmento ou da primeira palavra, e o end da última palavra do segmento
+            seg_start = float(seg.get("start", formatted_words[0]["start"]))
+            seg_end = float(seg.get("end", formatted_words[-1]["end"]))
+
+            cwi_blocks.append({
+                "id": str(uuid.uuid4()),
+                "start": seg_start,
+                "end": seg_end,
+                "speaker_id": str(seg.get("speaker", "S0")),
+                "words": formatted_words
+            })
+
+    # Estrutura final com a chave "captions" contendo os blocos do Whisper
     output_data = {"captions": cwi_blocks}
     
     with open(output_cwi_file, "w", encoding="utf-8") as f:
