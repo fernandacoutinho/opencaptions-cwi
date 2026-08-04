@@ -38,7 +38,6 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     env["PYTHONWARNINGS"] = "ignore"
     env["PYTHONUNBUFFERED"] = "1"
 
-    # Chamamos o transcribe.py apenas com os argumentos válidos (--input)
     cmd = [
         sys.executable,
         str(transcribe_script),
@@ -53,14 +52,16 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
         shell=(sys.platform == "win32")
     )
 
-    # Possíveis locais onde o transcribe.py pode ter salvo o JSON
+    # Possíveis locais e nomes onde o transcribe.py pode ter salvo o JSON
     possible_outputs = [
         video_file.with_suffix(".cwi.json"),
         Path(str(video_file) + ".cwi.json"),
         video_file.with_suffix(".json"),
         Path(str(video_file) + ".json"),
         Path.cwd() / f"{video_file.stem}.cwi.json",
-        Path.cwd() / f"{video_file.stem}.json"
+        Path.cwd() / f"{video_file.stem}.json",
+        video_file.parent / f"{video_file.name}.cwi.json",
+        video_file.parent / f"{video_file.name}.json",
     ]
 
     generated_file = None
@@ -69,16 +70,25 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
             generated_file = p
             break
 
+    # Se ainda assim não achou, faz uma busca por qualquer JSON recém-criado na pasta do vídeo ou na pasta atual
+    if not generated_file:
+        search_dirs = {video_file.parent, Path.cwd()}
+        for d in search_dirs:
+            matches = list(d.glob(f"*{video_file.stem}*.json"))
+            if matches:
+                generated_file = matches[0]
+                break
+
     if not generated_file:
         error_log = result.stderr.strip() or result.stdout.strip()
         raise RuntimeError(
-            f"O script transcribe.py falhou antes de gerar o JSON.\n"
-            f"--- LOG DE ERRO DO TRANSMITTER ---\n"
+            f"O script transcribe.py falhou ou o arquivo gerado não foi encontrado.\n"
+            f"--- LOG DO SCRIPT ---\n"
             f"{error_log}\n"
-            f"----------------------------------"
+            f"---------------------"
         )
 
-    # Se o usuário passou um caminho de saída customizado, movemos o arquivo para lá
+    # Se o usuário especificou um destino para o CWI JSON, movemos
     final_output = generated_file
     if output_cwi:
         target_path = Path(output_cwi).resolve()
