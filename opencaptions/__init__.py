@@ -1,7 +1,7 @@
 import subprocess
 import sys
 import os
-import shutil
+import json
 from pathlib import Path
 from .json_to_ttml import convert_cwi_json_to_ttml
 
@@ -26,6 +26,11 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     video_file = Path(video_path).resolve()
     if not video_file.exists():
         raise FileNotFoundError(f"Arquivo de vídeo não encontrado: {video_path}")
+
+    if output_cwi is None:
+        output_cwi_file = video_file.with_suffix(".cwi.json")
+    else:
+        output_cwi_file = Path(output_cwi).resolve()
 
     try:
         transcribe_script = _find_repo_path("packages/backend-av/scripts/transcribe.py")
@@ -52,16 +57,13 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
         shell=(sys.platform == "win32")
     )
 
-    # Possíveis locais e nomes onde o transcribe.py pode ter salvo o JSON
+    # Verifica se já existe algum arquivo gerado por convenção
     possible_outputs = [
+        output_cwi_file,
         video_file.with_suffix(".cwi.json"),
         Path(str(video_file) + ".cwi.json"),
         video_file.with_suffix(".json"),
         Path(str(video_file) + ".json"),
-        Path.cwd() / f"{video_file.stem}.cwi.json",
-        Path.cwd() / f"{video_file.stem}.json",
-        video_file.parent / f"{video_file.name}.cwi.json",
-        video_file.parent / f"{video_file.name}.json",
     ]
 
     generated_file = None
@@ -70,31 +72,36 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
             generated_file = p
             break
 
-    # Se ainda assim não achou, faz uma busca por qualquer JSON recém-criado na pasta do vídeo ou na pasta atual
+    # Se não gerou arquivo físico, tentamos extrair o JSON do stdout do transcribe.py
     if not generated_file:
-        search_dirs = {video_file.parent, Path.cwd()}
-        for d in search_dirs:
-            matches = list(d.glob(f"*{video_file.stem}*.json"))
-            if matches:
-                generated_file = matches[0]
-                break
+        stdout_text = result.stdout.strip()
+        # Procura onde começa o JSON impresso na tela (geralmente começa com '{' ou '[')
+        json_start_idx = stdout_text.find("{")
+        if json_start_idx != -1:
+            potential_json = stdout_text[json_start_idx:]
+            try:
+                # Valida se é um JSON válido
+                parsed_json = json.loads(potential_json)
+                # Salva o JSON no local esperado
+                with open(output_cwi_file, "w", encoding="utf-8") as f:
+                    json.dump(parsed_json, f, ensure_ascii=False, indent=2)
+                generated_file = output_cwi_file
+            except json.JSONDecodeError:
+                pass
 
     if not generated_file:
         error_log = result.stderr.strip() or result.stdout.strip()
         raise RuntimeError(
-            f"O script transcribe.py falhou ou o arquivo gerado não foi encontrado.\n"
-            f"--- LOG DO SCRIPT ---\n"
-            f"{error_log}\n"
-            f"---------------------"
+            f"O script transcribe.py executou, mas nenhum JSON válido foi gerado ou retornado.\n"
+            f"--- LOG ---\n{error_log}\n------------"
         )
 
-    # Se o usuário especificou um destino para o CWI JSON, movemos
+    # Se o arquivo gerado for diferente do output_cwi desejado, ajustamos
     final_output = generated_file
-    if output_cwi:
+    if output_cwi and generated_file != Path(output_cwi).resolve():
         target_path = Path(output_cwi).resolve()
-        if generated_file != target_path:
-            shutil.move(str(generated_file), str(target_path))
-            final_output = target_path
+        target_path.write_text(Path(generated_file).read_text(encoding="utf-8"), encoding="utf-8")
+        final_output = target_path
 
     if return_ttml:
         return convert_cwi_json_to_ttml(str(final_output))
