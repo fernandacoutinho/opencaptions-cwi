@@ -2,7 +2,6 @@ import subprocess
 import sys
 import os
 import json
-import uuid
 from pathlib import Path
 from .json_to_ttml import convert_cwi_json_to_ttml
 
@@ -65,49 +64,40 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     except Exception as e:
         raise RuntimeError(f"Erro ao decodificar JSON do transcribe.py: {e}\nSaída recebida: {result.stdout[:300]}")
 
-    # O Whisper/transcribe.py costuma retornar uma lista de segmentos ou um dicionário contendo "segments" / "chunks"
-    segments = []
-    if isinstance(raw_data, dict):
-        segments = raw_data.get("segments", raw_data.get("chunks", []))
-        # Se não tiver segments mas tiver "words" soltas na raiz, tratamos como um bloco único ou agrupamos por pausas
-        if not segments and "words" in raw_data:
-            segments = [{"words": raw_data["words"]}]
-    elif isinstance(raw_data, list):
-        segments = raw_data
-
-    cwi_blocks = []
-
-    for seg in segments:
-        words_raw = seg.get("words", [])
-        if not words_raw:
-            continue
-
-        formatted_words = []
-        for w in words_raw:
-            formatted_words.append({
-                "text": str(w.get("text", w.get("word", ""))),
-                "start": float(w.get("start", w.get("from", 0.0))),
-                "end": float(w.get("end", w.get("to", 0.0))),
-                "weight": int(w.get("weight", 500)),
-                "size": float(w.get("size", 1.096835)),
-                "emphasis": bool(w.get("emphasis", False))
+    # Se a própria ferramenta interna tiver um script ou função de formatação/agrupamento de blocos, podemos chamá-la ou reutilizá-la.
+    # Caso contrário, se o transcribe.py retornar apenas a lista de palavras na chave "words", 
+    # podemos procurar se existe um formatador dentro do backend ou agrupar dinamicamente por pausas/sentenças.
+    
+    # Vamos verificar se o raw_data já traz "captions" ou "segments" prontos com os IDs e tempos de início/fim:
+    captions = raw_data.get("captions", raw_data.get("segments", []))
+    
+    if not captions and "words" in raw_data:
+        # Se veio apenas a lista de palavras cruas, agrupamos por pausas naturais (ex: intervalo maior que 0.6s) ou por blocos de X palavras
+        words = raw_data["words"]
+        captions = []
+        current_words = []
+        
+        for w in words:
+            current_words.append(w)
+            # Regra de quebra de trecho automática baseada em pontuação ou limite de palavras
+            text = w.get("text", "")
+            if len(current_words) >= 12 or text.endswith(('.', '?', '!')):
+                if current_words:
+                    captions.append({
+                        "start": current_words[0].get("start", 0.0),
+                        "end": current_words[-1].get("end", 0.0),
+                        "words": current_words
+                    })
+                    current_words = []
+        
+        if current_words:
+            captions.append({
+                "start": current_words[0].get("start", 0.0),
+                "end": current_words[-1].get("end", 0.0),
+                "words": current_words
             })
 
-        if formatted_words:
-            # Pega o start do segmento ou da primeira palavra, e o end da última palavra do segmento
-            seg_start = float(seg.get("start", formatted_words[0]["start"]))
-            seg_end = float(seg.get("end", formatted_words[-1]["end"]))
-
-            cwi_blocks.append({
-                "id": str(uuid.uuid4()),
-                "start": seg_start,
-                "end": seg_end,
-                "speaker_id": str(seg.get("speaker", "S0")),
-                "words": formatted_words
-            })
-
-    # Estrutura final com a chave "captions" contendo os blocos do Whisper
-    output_data = {"captions": cwi_blocks}
+    output_data = {"captions": captions}
     
     with open(output_cwi_file, "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
