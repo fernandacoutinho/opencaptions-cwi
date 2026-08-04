@@ -63,9 +63,14 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
         shell=(sys.platform == "win32")
     )
 
-    if result.returncode != 0:
-        raise RuntimeError(f"Erro ao processar vídeo no OpenCaptions:\n{result.stderr or result.stdout}")
+    # Se o arquivo JSON não foi gerado, consideramos erro real
+    if not output_cwi_file.exists():
+        raise RuntimeError(
+            f"Erro ao processar vídeo no OpenCaptions (Arquivo JSON não gerado):\n"
+            f"{result.stderr or result.stdout}"
+        )
 
+    # Se o arquivo foi gerado com sucesso, retorna o formato solicitado
     if return_ttml:
         return convert_cwi_json_to_ttml(str(output_cwi_file))
 
