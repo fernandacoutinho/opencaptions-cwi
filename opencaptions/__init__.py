@@ -33,7 +33,6 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     else:
         output_cwi_file = Path(output_cwi).resolve()
 
-    # Localiza o script de transcrição do backend-av
     try:
         backend_dir = _find_repo_path("packages/backend-av/scripts")
     except FileNotFoundError:
@@ -50,14 +49,11 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     if not transcribe_script.exists():
         raise FileNotFoundError(f"Script de transcrição não encontrado em: {transcribe_script}")
 
-    raw_json_path = video_file.with_suffix(".raw.json")
-
-    # Executa o transcribe.py usando o argumento correto --input
+    # Executa o transcribe.py passando apenas --input e capturando o JSON do stdout
     cmd = [
         sys.executable,
         str(transcribe_script),
-        "--input", str(video_file),
-        "--output", str(raw_json_path)
+        "--input", str(video_file)
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True, env=env)
@@ -65,20 +61,11 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
         error_msg = result.stderr.strip() or result.stdout.strip()
         raise RuntimeError(f"Erro ao executar o transcribe.py: {error_msg}")
 
-    if not raw_json_path.exists():
-        raise RuntimeError("O script de transcrição não gerou o arquivo de saída esperado.")
-
-    # Lê o resultado bruto e converte para a estrutura CWI completa exigida
     try:
-        with open(raw_json_path, "r", encoding="utf-8") as f:
-            raw_data = json.load(f)
+        raw_data = json.loads(result.stdout)
     except Exception as e:
-        raise RuntimeError(f"Erro ao ler o JSON bruto da transcrição: {e}")
-    finally:
-        if raw_json_path.exists():
-            raw_json_path.unlink()
+        raise RuntimeError(f"Erro ao decodificar JSON do transcribe.py: {e}\nSaída recebida: {result.stdout[:200]}")
 
-    # Processa os segmentos e palavras aplicando a estrutura CWI rica
     cwi_blocks = []
     segments = raw_data.get("segments", [])
     if not segments and isinstance(raw_data, list):
@@ -122,7 +109,6 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
             "words": formatted_words
         })
 
-    # Salva o arquivo CWI final estruturado perfeitamente
     output_data = cwi_blocks[0] if len(cwi_blocks) == 1 else {"captions": cwi_blocks}
     with open(output_cwi_file, "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
