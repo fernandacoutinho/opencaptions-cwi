@@ -37,7 +37,6 @@ def extract_audio(video_path: str) -> str:
         raise RuntimeError(f"Failed to extract audio: {result.stderr[:200]}")
     return audio_path
 
-
 def transcribe_with_whisper(audio_path: str, model_size: str) -> dict:
     """Run Whisper transcription with word-level timestamps."""
     try:
@@ -50,11 +49,21 @@ def transcribe_with_whisper(audio_path: str, model_size: str) -> dict:
     model = whisper.load_model(model_size)
 
     print("Transcribing...", file=sys.stderr)
-    result = model.transcribe(
-        audio_path,
-        word_timestamps=True,
-        verbose=False,
-    )
+
+    # --- INÍCIO DA CORREÇÃO ---
+    # Redireciona temporariamente qualquer print interno do Whisper para o stderr
+    old_stdout = sys.stdout
+    sys.stdout = sys.stderr
+    try:
+        result = model.transcribe(
+            audio_path,
+            word_timestamps=True,
+            verbose=False,
+        )
+    finally:
+        # Restaura o stdout normal para poder imprimir o JSON final
+        sys.stdout = old_stdout
+    # --- FIM DA CORREÇÃO ---
 
     # Extract word-level data
     words = []
