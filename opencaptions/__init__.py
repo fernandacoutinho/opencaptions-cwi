@@ -49,7 +49,6 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     if not transcribe_script.exists():
         raise FileNotFoundError(f"Script de transcrição não encontrado em: {transcribe_script}")
 
-    # Executa o transcribe.py passando apenas --input e capturando o JSON do stdout
     cmd = [
         sys.executable,
         str(transcribe_script),
@@ -64,20 +63,23 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     try:
         raw_data = json.loads(result.stdout)
     except Exception as e:
-        raise RuntimeError(f"Erro ao decodificar JSON do transcribe.py: {e}\nSaída recebida: {result.stdout[:200]}")
+        raise RuntimeError(f"Erro ao decodificar JSON do transcribe.py: {e}\nSaída recebida: {result.stdout[:300]}")
+
+    # Flexibiliza a busca por segmentos em diferentes formatos que o Whisper/backend possam retornar
+    segments = []
+    if isinstance(raw_data, dict):
+        segments = raw_data.get("segments", raw_data.get("chunks", raw_data.get("captions", [])))
+        if not segments and "text" in raw_data:
+            segments = [raw_data]
+    elif isinstance(raw_data, list):
+        segments = raw_data
 
     cwi_blocks = []
-    segments = raw_data.get("segments", [])
-    if not segments and isinstance(raw_data, list):
-        segments = raw_data
-    elif not segments and "text" in raw_data:
-        segments = [raw_data]
-
     for seg in segments:
         block_id = str(uuid.uuid4())
-        start = float(seg.get("start", 0.0))
-        end = float(seg.get("end", start + 1.0))
-        speaker_id = str(seg.get("speaker", "S0"))
+        start = float(seg.get("start", seg.get("from", 0.0)))
+        end = float(seg.get("end", seg.get("to", start + 1.0)))
+        speaker_id = str(seg.get("speaker", seg.get("speaker_id", "S0")))
         
         words_raw = seg.get("words", [])
         if not words_raw and "text" in seg:
@@ -93,9 +95,9 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
         formatted_words = []
         for w in words_raw:
             formatted_words.append({
-                "text": str(w.get("text", "")),
-                "start": float(w.get("start", start)),
-                "end": float(w.get("end", end)),
+                "text": str(w.get("text", w.get("word", ""))),
+                "start": float(w.get("start", w.get("from", start))),
+                "end": float(w.get("end", w.get("to", end))),
                 "weight": int(w.get("weight", 500)),
                 "size": float(w.get("size", 1.096835)),
                 "emphasis": bool(w.get("emphasis", False))
@@ -107,6 +109,17 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
             "end": end,
             "speaker_id": speaker_id,
             "words": formatted_words
+        })
+
+    # Se mesmo assim vier vazio, criamos um bloco fallback com o texto bruto caso o raw_data contenha algo
+    if not cwi_blocks and isinstance(raw_data, dict) and "text" in raw_data:
+        text_content = raw_data["text"]
+        cwi_blocks.append({
+            "id": str(uuid.uuid4()),
+            "start": 0.0,
+            "end": 5.0,
+            "speaker_id": "S0",
+            "words": [{"text": t, "start": 0.0, "end": 5.0, "weight": 500, "size": 1.096835, "emphasis": False} for t in text_content.split()]
         })
 
     output_data = cwi_blocks[0] if len(cwi_blocks) == 1 else {"captions": cwi_blocks}
