@@ -104,7 +104,7 @@ const SCRIPTS_DIR = (() => {
 		const pkgDir = join(require.resolve("@opencaptions/backend-av/package.json"), "..");
 		return join(pkgDir, "scripts");
 	} catch {
-		return fromSrc; // best effort
+		return fromSrc; // best efort
 	}
 })();
 

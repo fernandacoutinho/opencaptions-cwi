@@ -1,0 +1,12 @@
+include README.md
+include package.json
+include pyproject.toml
+include LICENSE
+
+graft fixtures
+graft integrations
+graft packages
+graft scripts
+graft opencaptions
+
+global-include *.py *.ts *.js *.json *.html *.css *.sh *.md *.txt
