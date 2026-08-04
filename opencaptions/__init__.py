@@ -32,19 +32,28 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
         output_cwi_file = Path(output_cwi).resolve()
 
     try:
-        # Tenta encontrar o script integrador oficial do repositório
         pipeline_script = _find_repo_path("integrations/openmontage/tools/subtitle/opencaptions_cwi.py")
     except FileNotFoundError:
-        # Fallback caso esteja empacotado de outra forma
         pipeline_script = _find_repo_path("opencaptions/opencaptions_cwi.py")
 
     env = os.environ.copy()
     python_bin_dir = str(Path(sys.executable).parent)
-    env["PATH"] = f"{python_bin_dir}{os.pathsep}{env.get('PATH', '')}"
+    
+    # Injeta caminhos comuns do Node/npm/bun no PATH do subprocesso para que o CLI seja encontrado
+    extra_paths = []
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA", "")
+        userprofile = os.environ.get("USERPROFILE", "")
+        if appdata:
+            extra_paths.append(os.path.join(appdata, "npm"))
+        if userprofile:
+            extra_paths.append(os.path.join(userprofile, ".bun", "bin"))
+    
+    path_env = os.pathsep.join(extra_paths) + os.pathsep + python_bin_dir + os.pathsep + env.get("PATH", "")
+    env["PATH"] = path_env
     env["PYTHONWARNINGS"] = "ignore"
     env["PYTHONUNBUFFERED"] = "1"
 
-    # O script integrador geralmente aceita o vídeo de entrada e a saída
     cmd = [
         sys.executable,
         str(pipeline_script),
