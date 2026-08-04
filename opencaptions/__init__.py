@@ -6,8 +6,7 @@ from pathlib import Path
 from .json_to_ttml import convert_cwi_json_to_ttml
 
 def _find_cli_entry():
-    """Localiza o arquivo de entrada da CLI em TypeScript."""
-    # 1. Procura subindo a partir deste arquivo (__file__)
+    # 1. Tenta achar subindo os diretórios da instalação
     curr = Path(__file__).resolve().parent
     while curr != curr.parent:
         cli_path = curr / "packages" / "cli" / "src" / "index.ts"
@@ -15,7 +14,7 @@ def _find_cli_entry():
             return cli_path, curr
         curr = curr.parent
 
-    # 2. Se não encontrou subindo (ex: instalado via site-packages), tenta via diretório atual
+    # 2. Tenta achar a partir do diretório onde o terminal está rodando
     curr = Path.cwd()
     while curr != curr.parent:
         cli_path = curr / "packages" / "cli" / "src" / "index.ts"
@@ -26,9 +25,6 @@ def _find_cli_entry():
     return None, None
 
 def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = False):
-    """
-    Processa um vídeo utilizando a CLI do OpenCaptions por trás dos panos.
-    """
     video_file = Path(video_path).resolve()
     if not video_file.exists():
         raise FileNotFoundError(f"Arquivo de vídeo não encontrado: {video_path}")
@@ -54,7 +50,7 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
             except Exception:
                 pass
 
-    # --- EXECUÇÃO DO COMANDO ---
+    # --- MONTAGEM DO COMANDO ---
     if cli_entry and cli_entry.exists() and shutil.which("bun"):
         cmd = ["bun", str(cli_entry), "generate", str(video_file)]
     elif shutil.which("bun"):
