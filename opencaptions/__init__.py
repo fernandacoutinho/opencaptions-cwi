@@ -4,20 +4,13 @@ import os
 from pathlib import Path
 from .json_to_ttml import convert_cwi_json_to_ttml
 
-# Pasta onde o pacote opencaptions está instalado
 PACKAGE_DIR = Path(__file__).parent.resolve()
 
 def _find_repo_path(relative_path: str) -> Path:
-    """
-    Busca qualquer pasta ou arquivo do repositório (fixtures, packages, scripts, etc.),
-    seja rodando localmente em dev ou instalado no site-packages do pip.
-    """
-    # 1. Procura na raiz do site-packages / instalação
     site_packages_path = PACKAGE_DIR.parent / relative_path
     if site_packages_path.exists():
         return site_packages_path
 
-    # 2. Busca subindo a árvore de diretórios
     curr = PACKAGE_DIR
     while curr != curr.parent:
         candidate = curr / relative_path
@@ -49,10 +42,12 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     env["PYTHONWARNINGS"] = "ignore"
     env["PYTHONUNBUFFERED"] = "1"
 
+    # Forçamos o parâmetro de saída (--output ou -o) para salvar no output_cwi_file
     cmd = [
         sys.executable,
         str(transcribe_script),
-        "--input", str(video_file)
+        "--input", str(video_file),
+        "--output", str(output_cwi_file)
     ]
 
     result = subprocess.run(
@@ -63,18 +58,24 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
         shell=(sys.platform == "win32")
     )
 
-    # Se o arquivo JSON não foi gerado, consideramos erro real
-    if not output_cwi_file.exists():
+    # Se por acaso o script criar como "video.mp4.cwi.json", tratamos o fallback:
+    fallback_cwi_file = Path(str(video_file) + ".cwi.json")
+    
+    actual_output = None
+    if output_cwi_file.exists():
+        actual_output = output_cwi_file
+    elif fallback_cwi_file.exists():
+        actual_output = fallback_cwi_file
+    else:
         raise RuntimeError(
-            f"Erro ao processar vídeo no OpenCaptions (Arquivo JSON não gerado):\n"
+            f"Erro ao processar vídeo no OpenCaptions (Arquivo JSON não gerado em {output_cwi_file}):\n"
             f"{result.stderr or result.stdout}"
         )
 
-    # Se o arquivo foi gerado com sucesso, retorna o formato solicitado
     if return_ttml:
-        return convert_cwi_json_to_ttml(str(output_cwi_file))
+        return convert_cwi_json_to_ttml(str(actual_output))
 
-    return str(output_cwi_file)
+    return str(actual_output)
 
 __all__ = [
     "convert_cwi_json_to_ttml",
