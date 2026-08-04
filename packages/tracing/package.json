@@ -1,0 +1,31 @@
+{
+	"name": "@opencaptions/tracing",
+	"version": "0.1.0",
+	"description": "Opt-in anonymous telemetry and correction collection",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"test": "echo \"No tests yet\"",
+		"lint": "biome check src/",
+		"typecheck": "tsc --noEmit",
+		"clean": "rm -rf dist .turbo"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"@opencaptions/types": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^22.0.0"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}

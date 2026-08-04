@@ -1,0 +1,242 @@
+{
+	"$schema": "https://opencaptions.tools/schema/cwi/1.0.json",
+	"version": "1.0",
+	"metadata": {
+		"title": "Emotional — Three Voices",
+		"duration": 25.0,
+		"language": "en",
+		"created_at": "2026-04-06T00:00:00Z",
+		"generator": "opencaptions/0.1.0",
+		"extractor_backend": "manual-fixture"
+	},
+	"cast": [
+		{
+			"id": "S1",
+			"name": "Elara",
+			"color": "#6B8AFF",
+			"voice_profile": {
+				"pitch_baseline_hz": 210,
+				"pitch_p10": 170,
+				"pitch_p90": 280,
+				"volume_baseline_db": -18,
+				"volume_p10": -28,
+				"volume_p90": -12
+			}
+		},
+		{
+			"id": "S2",
+			"name": "Marcus",
+			"color": "#FF6B6B",
+			"voice_profile": {
+				"pitch_baseline_hz": 130,
+				"pitch_p10": 100,
+				"pitch_p90": 180,
+				"volume_baseline_db": -16,
+				"volume_p10": -26,
+				"volume_p90": -10
+			}
+		},
+		{
+			"id": "S3",
+			"name": "Iris",
+			"color": "#6BFFA3",
+			"voice_profile": {
+				"pitch_baseline_hz": 240,
+				"pitch_p10": 195,
+				"pitch_p90": 310,
+				"volume_baseline_db": -20,
+				"volume_p10": -30,
+				"volume_p90": -14
+			}
+		}
+	],
+	"captions": [
+		{
+			"id": "C1",
+			"start": 0.5,
+			"end": 5.0,
+			"speaker_id": "S1",
+			"words": [
+				{
+					"text": "Don't",
+					"start": 0.5,
+					"end": 0.9,
+					"weight": 200,
+					"size": 0.75,
+					"emphasis": false
+				},
+				{
+					"text": "tell",
+					"start": 1.0,
+					"end": 1.35,
+					"weight": 200,
+					"size": 0.75,
+					"emphasis": false
+				},
+				{ "text": "him", "start": 1.4, "end": 1.7, "weight": 220, "size": 0.78, "emphasis": false },
+				{ "text": "I", "start": 2.0, "end": 2.15, "weight": 200, "size": 0.75, "emphasis": false },
+				{
+					"text": "was",
+					"start": 2.2,
+					"end": 2.45,
+					"weight": 200,
+					"size": 0.75,
+					"emphasis": false
+				},
+				{
+					"text": "here.",
+					"start": 2.5,
+					"end": 3.1,
+					"weight": 180,
+					"size": 0.72,
+					"emphasis": false
+				}
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 26 }
+		},
+		{
+			"id": "C2",
+			"start": 5.5,
+			"end": 10.5,
+			"speaker_id": "S2",
+			"words": [
+				{ "text": "She", "start": 5.5, "end": 5.8, "weight": 600, "size": 1.2, "emphasis": false },
+				{
+					"text": "LIED",
+					"start": 5.85,
+					"end": 6.4,
+					"weight": 700,
+					"size": 1.35,
+					"emphasis": true
+				},
+				{
+					"text": "to",
+					"start": 6.45,
+					"end": 6.65,
+					"weight": 650,
+					"size": 1.25,
+					"emphasis": false
+				},
+				{ "text": "all", "start": 6.7, "end": 7.0, "weight": 680, "size": 1.3, "emphasis": true },
+				{ "text": "of", "start": 7.05, "end": 7.2, "weight": 600, "size": 1.2, "emphasis": false },
+				{ "text": "us!", "start": 7.25, "end": 7.8, "weight": 700, "size": 1.35, "emphasis": true }
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 22 }
+		},
+		{
+			"id": "C3",
+			"start": 11.5,
+			"end": 15.5,
+			"speaker_id": "S3",
+			"words": [
+				{
+					"text": "Please,",
+					"start": 11.5,
+					"end": 12.1,
+					"weight": 350,
+					"size": 0.9,
+					"emphasis": false
+				},
+				{
+					"text": "just",
+					"start": 12.2,
+					"end": 12.5,
+					"weight": 380,
+					"size": 0.95,
+					"emphasis": false
+				},
+				{
+					"text": "stop.",
+					"start": 12.6,
+					"end": 13.3,
+					"weight": 300,
+					"size": 0.85,
+					"emphasis": false
+				}
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 18 }
+		},
+		{
+			"id": "C4",
+			"start": 16.0,
+			"end": 20.5,
+			"speaker_id": "S2",
+			"words": [
+				{
+					"text": "No!",
+					"start": 16.0,
+					"end": 16.5,
+					"weight": 700,
+					"size": 1.35,
+					"emphasis": true
+				},
+				{
+					"text": "Not",
+					"start": 16.8,
+					"end": 17.1,
+					"weight": 650,
+					"size": 1.3,
+					"emphasis": false
+				},
+				{
+					"text": "until",
+					"start": 17.15,
+					"end": 17.5,
+					"weight": 600,
+					"size": 1.2,
+					"emphasis": false
+				},
+				{
+					"text": "she",
+					"start": 17.55,
+					"end": 17.8,
+					"weight": 550,
+					"size": 1.15,
+					"emphasis": false
+				},
+				{
+					"text": "admits",
+					"start": 17.85,
+					"end": 18.4,
+					"weight": 680,
+					"size": 1.3,
+					"emphasis": true
+				},
+				{
+					"text": "it.",
+					"start": 18.45,
+					"end": 18.9,
+					"weight": 500,
+					"size": 1.1,
+					"emphasis": false
+				}
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 27 }
+		},
+		{
+			"id": "C5",
+			"start": 21.5,
+			"end": 24.5,
+			"speaker_id": "S1",
+			"words": [
+				{
+					"text": "I'm",
+					"start": 21.5,
+					"end": 21.8,
+					"weight": 250,
+					"size": 0.8,
+					"emphasis": false
+				},
+				{
+					"text": "sorry.",
+					"start": 22.2,
+					"end": 23.0,
+					"weight": 200,
+					"size": 0.75,
+					"emphasis": false
+				}
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 10 }
+		}
+	]
+}

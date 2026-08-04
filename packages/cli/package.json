@@ -1,0 +1,30 @@
+{
+	"name": "opencaptions",
+	"version": "0.1.0",
+	"description": "Feel the film. Render the intent. CLI for CWI caption generation.",
+	"type": "module",
+	"bin": {
+		"opencaptions": "dist/index.js"
+	},
+	"scripts": {
+		"build": "tsc",
+		"dev": "bun run src/index.ts",
+		"test": "echo \"No tests yet\"",
+		"lint": "biome check src/",
+		"typecheck": "tsc --noEmit",
+		"clean": "rm -rf dist .turbo"
+	},
+	"dependencies": {
+		"@opencaptions/types": "workspace:*",
+		"@opencaptions/pipeline": "workspace:*",
+		"@opencaptions/backend-av": "workspace:*",
+		"@opencaptions/backend-tribe": "workspace:*",
+		"@opencaptions/renderer": "workspace:*",
+		"@opencaptions/tracing": "workspace:*",
+		"@opencaptions/spec": "workspace:*"
+	},
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	}
+}

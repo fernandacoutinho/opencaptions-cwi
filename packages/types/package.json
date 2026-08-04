@@ -1,0 +1,25 @@
+{
+	"name": "@opencaptions/types",
+	"version": "0.1.0",
+	"description": "Core type definitions and JSON Schema for CWI caption documents",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"test": "echo \"No tests yet\"",
+		"lint": "biome check src/",
+		"typecheck": "tsc --noEmit",
+		"clean": "rm -rf dist .turbo"
+	},
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	}
+}

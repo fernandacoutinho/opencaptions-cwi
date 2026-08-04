@@ -1,0 +1,102 @@
+{
+	"$schema": "https://opencaptions.tools/schema/cwi/1.0.json",
+	"version": "1.0",
+	"metadata": {
+		"title": "Invalid — Missing Speaker (ATT_001)",
+		"duration": 10.0,
+		"language": "en",
+		"created_at": "2026-04-06T00:00:00Z",
+		"generator": "opencaptions/0.1.0",
+		"extractor_backend": "manual-fixture"
+	},
+	"cast": [
+		{
+			"id": "S1",
+			"name": "Elara",
+			"color": "#6B8AFF",
+			"voice_profile": {
+				"pitch_baseline_hz": 210,
+				"pitch_p10": 170,
+				"pitch_p90": 280,
+				"volume_baseline_db": -18,
+				"volume_p10": -28,
+				"volume_p90": -12
+			}
+		},
+		{
+			"id": "S2",
+			"name": "Marcus",
+			"color": "#FF6B6B",
+			"voice_profile": {
+				"pitch_baseline_hz": 130,
+				"pitch_p10": 100,
+				"pitch_p90": 180,
+				"volume_baseline_db": -16,
+				"volume_p10": -26,
+				"volume_p90": -10
+			}
+		}
+	],
+	"captions": [
+		{
+			"id": "C1",
+			"start": 0.5,
+			"end": 3.0,
+			"speaker_id": "S1",
+			"words": [
+				{
+					"text": "Hello,",
+					"start": 0.5,
+					"end": 0.9,
+					"weight": 450,
+					"size": 1.05,
+					"emphasis": false
+				},
+				{ "text": "is", "start": 0.95, "end": 1.15, "weight": 400, "size": 1.0, "emphasis": false },
+				{
+					"text": "anyone",
+					"start": 1.2,
+					"end": 1.6,
+					"weight": 500,
+					"size": 1.1,
+					"emphasis": false
+				},
+				{
+					"text": "there?",
+					"start": 1.65,
+					"end": 2.2,
+					"weight": 550,
+					"size": 1.15,
+					"emphasis": true
+				}
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 24 }
+		},
+		{
+			"id": "C2",
+			"start": 4.0,
+			"end": 7.0,
+			"speaker_id": "S3",
+			"words": [
+				{ "text": "I'm", "start": 4.0, "end": 4.3, "weight": 450, "size": 1.05, "emphasis": false },
+				{
+					"text": "right",
+					"start": 4.35,
+					"end": 4.7,
+					"weight": 500,
+					"size": 1.1,
+					"emphasis": false
+				},
+				{
+					"text": "here.",
+					"start": 4.75,
+					"end": 5.3,
+					"weight": 480,
+					"size": 1.05,
+					"emphasis": false
+				}
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 15 }
+		}
+	]
+}

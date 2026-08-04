@@ -1,0 +1,196 @@
+{
+	"$schema": "https://opencaptions.tools/schema/cwi/1.0.json",
+	"version": "1.0",
+	"metadata": {
+		"title": "Dialogue — Confrontation",
+		"duration": 20.0,
+		"language": "en",
+		"created_at": "2026-04-06T00:00:00Z",
+		"generator": "opencaptions/0.1.0",
+		"extractor_backend": "manual-fixture"
+	},
+	"cast": [
+		{
+			"id": "S1",
+			"name": "Elara",
+			"color": "#6B8AFF",
+			"voice_profile": {
+				"pitch_baseline_hz": 210,
+				"pitch_p10": 170,
+				"pitch_p90": 280,
+				"volume_baseline_db": -18,
+				"volume_p10": -28,
+				"volume_p90": -12
+			}
+		},
+		{
+			"id": "S2",
+			"name": "Marcus",
+			"color": "#FF6B6B",
+			"voice_profile": {
+				"pitch_baseline_hz": 130,
+				"pitch_p10": 100,
+				"pitch_p90": 180,
+				"volume_baseline_db": -16,
+				"volume_p10": -26,
+				"volume_p90": -10
+			}
+		}
+	],
+	"captions": [
+		{
+			"id": "C1",
+			"start": 0.5,
+			"end": 4.0,
+			"speaker_id": "S1",
+			"words": [
+				{
+					"text": "Where",
+					"start": 0.5,
+					"end": 0.85,
+					"weight": 500,
+					"size": 1.1,
+					"emphasis": false
+				},
+				{
+					"text": "were",
+					"start": 0.9,
+					"end": 1.15,
+					"weight": 480,
+					"size": 1.05,
+					"emphasis": false
+				},
+				{ "text": "you", "start": 1.2, "end": 1.45, "weight": 520, "size": 1.1, "emphasis": false },
+				{
+					"text": "last",
+					"start": 1.5,
+					"end": 1.85,
+					"weight": 550,
+					"size": 1.15,
+					"emphasis": false
+				},
+				{ "text": "night?", "start": 1.9, "end": 2.6, "weight": 600, "size": 1.2, "emphasis": true }
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 26 }
+		},
+		{
+			"id": "C2",
+			"start": 4.5,
+			"end": 9.0,
+			"speaker_id": "S2",
+			"words": [
+				{ "text": "I", "start": 4.5, "end": 4.65, "weight": 350, "size": 0.95, "emphasis": false },
+				{ "text": "told", "start": 4.7, "end": 5.0, "weight": 400, "size": 1.0, "emphasis": false },
+				{
+					"text": "you,",
+					"start": 5.05,
+					"end": 5.35,
+					"weight": 400,
+					"size": 1.0,
+					"emphasis": false
+				},
+				{ "text": "I", "start": 5.8, "end": 5.95, "weight": 420, "size": 1.0, "emphasis": false },
+				{ "text": "was", "start": 6.0, "end": 6.25, "weight": 400, "size": 1.0, "emphasis": false },
+				{
+					"text": "working",
+					"start": 6.3,
+					"end": 6.8,
+					"weight": 450,
+					"size": 1.05,
+					"emphasis": false
+				},
+				{
+					"text": "late.",
+					"start": 6.85,
+					"end": 7.4,
+					"weight": 350,
+					"size": 0.9,
+					"emphasis": false
+				}
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 34 }
+		},
+		{
+			"id": "C3",
+			"start": 10.0,
+			"end": 14.5,
+			"speaker_id": "S1",
+			"words": [
+				{
+					"text": "That's",
+					"start": 10.0,
+					"end": 10.4,
+					"weight": 550,
+					"size": 1.15,
+					"emphasis": false
+				},
+				{
+					"text": "not",
+					"start": 10.45,
+					"end": 10.75,
+					"weight": 650,
+					"size": 1.25,
+					"emphasis": true
+				},
+				{
+					"text": "what",
+					"start": 10.8,
+					"end": 11.1,
+					"weight": 600,
+					"size": 1.2,
+					"emphasis": false
+				},
+				{
+					"text": "they",
+					"start": 11.15,
+					"end": 11.45,
+					"weight": 550,
+					"size": 1.15,
+					"emphasis": false
+				},
+				{
+					"text": "said.",
+					"start": 11.5,
+					"end": 12.2,
+					"weight": 500,
+					"size": 1.1,
+					"emphasis": false
+				}
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 26 }
+		},
+		{
+			"id": "C4",
+			"start": 15.0,
+			"end": 19.0,
+			"speaker_id": "S2",
+			"words": [
+				{
+					"text": "You",
+					"start": 15.0,
+					"end": 15.3,
+					"weight": 500,
+					"size": 1.1,
+					"emphasis": false
+				},
+				{
+					"text": "don't",
+					"start": 15.35,
+					"end": 15.7,
+					"weight": 550,
+					"size": 1.15,
+					"emphasis": false
+				},
+				{
+					"text": "understand.",
+					"start": 15.75,
+					"end": 16.6,
+					"weight": 450,
+					"size": 1.0,
+					"emphasis": false
+				}
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 21 }
+		}
+	]
+}

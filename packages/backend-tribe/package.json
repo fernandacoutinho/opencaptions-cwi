@@ -1,0 +1,29 @@
+{
+	"name": "@opencaptions/backend-tribe",
+	"version": "0.1.0",
+	"description": "V3 TRIBE v2 neural intent extractor — predicted brain activations from video",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"test": "bun test",
+		"lint": "biome check src/",
+		"typecheck": "tsc --noEmit",
+		"clean": "rm -rf dist .turbo"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"@opencaptions/types": "workspace:*",
+		"@opencaptions/pipeline": "workspace:*"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}

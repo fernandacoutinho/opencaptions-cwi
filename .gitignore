@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Turbo
+.turbo/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OpenCaptions local config
+.opencaptions/
+
+# Python venv (for backend-av)
+venv/
+__pycache__/
+*.pyc
+
+# Test media (generated, not tracked)
+fixtures/test-media/

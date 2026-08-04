@@ -1,0 +1,155 @@
+{
+	"$schema": "https://opencaptions.tools/schema/cwi/1.0.json",
+	"version": "1.0",
+	"metadata": {
+		"title": "Monologue — Elara Remembers",
+		"duration": 15.0,
+		"language": "en",
+		"created_at": "2026-04-06T00:00:00Z",
+		"generator": "opencaptions/0.1.0",
+		"extractor_backend": "manual-fixture"
+	},
+	"cast": [
+		{
+			"id": "S1",
+			"name": "Elara",
+			"color": "#6B8AFF",
+			"voice_profile": {
+				"pitch_baseline_hz": 210,
+				"pitch_p10": 170,
+				"pitch_p90": 280,
+				"volume_baseline_db": -18,
+				"volume_p10": -28,
+				"volume_p90": -12
+			}
+		}
+	],
+	"captions": [
+		{
+			"id": "C1",
+			"start": 0.5,
+			"end": 4.2,
+			"speaker_id": "S1",
+			"words": [
+				{ "text": "The", "start": 0.5, "end": 0.7, "weight": 400, "size": 1.0, "emphasis": false },
+				{
+					"text": "night",
+					"start": 0.75,
+					"end": 1.1,
+					"weight": 400,
+					"size": 1.0,
+					"emphasis": false
+				},
+				{
+					"text": "was",
+					"start": 1.15,
+					"end": 1.35,
+					"weight": 400,
+					"size": 1.0,
+					"emphasis": false
+				},
+				{
+					"text": "still.",
+					"start": 1.4,
+					"end": 2.0,
+					"weight": 350,
+					"size": 0.95,
+					"emphasis": false
+				},
+				{ "text": "I", "start": 2.8, "end": 2.95, "weight": 420, "size": 1.0, "emphasis": false }
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 22 }
+		},
+		{
+			"id": "C2",
+			"start": 4.5,
+			"end": 9.5,
+			"speaker_id": "S1",
+			"words": [
+				{
+					"text": "remember",
+					"start": 4.5,
+					"end": 5.1,
+					"weight": 500,
+					"size": 1.1,
+					"emphasis": false
+				},
+				{
+					"text": "every",
+					"start": 5.2,
+					"end": 5.6,
+					"weight": 550,
+					"size": 1.15,
+					"emphasis": false
+				},
+				{
+					"text": "detail",
+					"start": 5.7,
+					"end": 6.3,
+					"weight": 600,
+					"size": 1.2,
+					"emphasis": true
+				},
+				{
+					"text": "\u2014",
+					"start": 6.35,
+					"end": 6.5,
+					"weight": 500,
+					"size": 1.0,
+					"emphasis": false
+				},
+				{ "text": "the", "start": 7.0, "end": 7.2, "weight": 500, "size": 1.05, "emphasis": false }
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 28 }
+		},
+		{
+			"id": "C3",
+			"start": 10.0,
+			"end": 14.5,
+			"speaker_id": "S1",
+			"words": [
+				{
+					"text": "cold",
+					"start": 10.0,
+					"end": 10.4,
+					"weight": 350,
+					"size": 0.9,
+					"emphasis": false
+				},
+				{
+					"text": "air,",
+					"start": 10.5,
+					"end": 10.9,
+					"weight": 320,
+					"size": 0.88,
+					"emphasis": false
+				},
+				{
+					"text": "the",
+					"start": 11.2,
+					"end": 11.4,
+					"weight": 300,
+					"size": 0.85,
+					"emphasis": false
+				},
+				{
+					"text": "silence,",
+					"start": 11.5,
+					"end": 12.1,
+					"weight": 280,
+					"size": 0.85,
+					"emphasis": false
+				},
+				{
+					"text": "everything.",
+					"start": 13.0,
+					"end": 14.0,
+					"weight": 300,
+					"size": 0.85,
+					"emphasis": false
+				}
+			],
+			"layout_hint": { "estimated_lines": 1, "max_line_width_chars": 34 }
+		}
+	]
+}
