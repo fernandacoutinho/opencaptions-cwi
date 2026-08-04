@@ -5,7 +5,7 @@ Biblioteca Python para conversão de legendas em formato JSON para TTML com supo
 ## Instalação
 
 ```bash
-pip install git+[ttps://github.com/fernandacoutinho/opencaptions-cwi.git](https://github.com/fernandacoutinho/opencaptions-cwi.git)
+pip install git+[https://github.com/fernandacoutinho/opencaptions-cwi.git](https://github.com/fernandacoutinho/opencaptions-cwi.git)
 =======
 # OpenCaptions
 ------------------------------------------------------------------------------------------------------
