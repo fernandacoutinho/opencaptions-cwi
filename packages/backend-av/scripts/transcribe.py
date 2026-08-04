@@ -50,8 +50,6 @@ def transcribe_with_whisper(audio_path: str, model_size: str) -> dict:
 
     print("Transcribing...", file=sys.stderr)
 
-    # --- INÍCIO DA CORREÇÃO ---
-    # Redireciona temporariamente qualquer print interno do Whisper para o stderr
     old_stdout = sys.stdout
     sys.stdout = sys.stderr
     try:
@@ -63,7 +61,6 @@ def transcribe_with_whisper(audio_path: str, model_size: str) -> dict:
     finally:
         # Restaura o stdout normal para poder imprimir o JSON final
         sys.stdout = old_stdout
-    # --- FIM DA CORREÇÃO ---
 
     # Extract word-level data
     words = []
