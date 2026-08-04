@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import os
+import shutil
 from pathlib import Path
 from .json_to_ttml import convert_cwi_json_to_ttml
 
@@ -26,11 +27,6 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     if not video_file.exists():
         raise FileNotFoundError(f"Arquivo de vídeo não encontrado: {video_path}")
 
-    if output_cwi is None:
-        output_cwi_file = video_file.with_suffix(".cwi.json")
-    else:
-        output_cwi_file = Path(output_cwi).resolve()
-
     try:
         transcribe_script = _find_repo_path("packages/backend-av/scripts/transcribe.py")
     except FileNotFoundError:
@@ -42,11 +38,11 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     env["PYTHONWARNINGS"] = "ignore"
     env["PYTHONUNBUFFERED"] = "1"
 
+    # Chamamos o transcribe.py apenas com os argumentos válidos (--input)
     cmd = [
         sys.executable,
         str(transcribe_script),
-        "--input", str(video_file),
-        "--output", str(output_cwi_file)
+        "--input", str(video_file)
     ]
 
     result = subprocess.run(
@@ -57,15 +53,23 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
         shell=(sys.platform == "win32")
     )
 
-    fallback_cwi_file = Path(str(video_file) + ".cwi.json")
-    
-    actual_output = None
-    if output_cwi_file.exists():
-        actual_output = output_cwi_file
-    elif fallback_cwi_file.exists():
-        actual_output = fallback_cwi_file
-    else:
-        # Exibe o erro real vindo do script transcribe.py
+    # Possíveis locais onde o transcribe.py pode ter salvo o JSON
+    possible_outputs = [
+        video_file.with_suffix(".cwi.json"),
+        Path(str(video_file) + ".cwi.json"),
+        video_file.with_suffix(".json"),
+        Path(str(video_file) + ".json"),
+        Path.cwd() / f"{video_file.stem}.cwi.json",
+        Path.cwd() / f"{video_file.stem}.json"
+    ]
+
+    generated_file = None
+    for p in possible_outputs:
+        if p.exists():
+            generated_file = p
+            break
+
+    if not generated_file:
         error_log = result.stderr.strip() or result.stdout.strip()
         raise RuntimeError(
             f"O script transcribe.py falhou antes de gerar o JSON.\n"
@@ -74,10 +78,18 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
             f"----------------------------------"
         )
 
-    if return_ttml:
-        return convert_cwi_json_to_ttml(str(actual_output))
+    # Se o usuário passou um caminho de saída customizado, movemos o arquivo para lá
+    final_output = generated_file
+    if output_cwi:
+        target_path = Path(output_cwi).resolve()
+        if generated_file != target_path:
+            shutil.move(str(generated_file), str(target_path))
+            final_output = target_path
 
-    return str(actual_output)
+    if return_ttml:
+        return convert_cwi_json_to_ttml(str(final_output))
+
+    return str(final_output)
 
 __all__ = [
     "convert_cwi_json_to_ttml",
