@@ -5,13 +5,18 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "opencaptions"
 version = "0.1.0"
-description = "Ferramenta para conversao e geracao de legendas TTML com enfase 3D."
+description = "Pipeline completo de geração de legendas e conversão TTML com ênfase."
 readme = "README.md"
 authors = [
     { name = "Fernanda Coutinho" }
 ]
 requires-python = ">=3.9"
-dependencies = []
+dependencies = [
+    "openai-whisper",
+    "ffmpeg-python",
+    "torch",
+    "tqdm"
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
