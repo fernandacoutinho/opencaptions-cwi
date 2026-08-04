@@ -42,7 +42,6 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     env["PYTHONWARNINGS"] = "ignore"
     env["PYTHONUNBUFFERED"] = "1"
 
-    # Forçamos o parâmetro de saída (--output ou -o) para salvar no output_cwi_file
     cmd = [
         sys.executable,
         str(transcribe_script),
@@ -58,7 +57,6 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
         shell=(sys.platform == "win32")
     )
 
-    # Se por acaso o script criar como "video.mp4.cwi.json", tratamos o fallback:
     fallback_cwi_file = Path(str(video_file) + ".cwi.json")
     
     actual_output = None
@@ -67,9 +65,13 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     elif fallback_cwi_file.exists():
         actual_output = fallback_cwi_file
     else:
+        # AQUI: Exibe a saída completa do erro para podermos diagnosticar
+        error_details = result.stderr if result.stderr.strip() else result.stdout
         raise RuntimeError(
-            f"Erro ao processar vídeo no OpenCaptions (Arquivo JSON não gerado em {output_cwi_file}):\n"
-            f"{result.stderr or result.stdout}"
+            f"O script de transcrição falhou e não gerou o arquivo JSON.\n"
+            f"---------------- Detalhes do Erro ----------------\n"
+            f"{error_details}\n"
+            f"--------------------------------------------------"
         )
 
     if return_ttml:
