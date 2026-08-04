@@ -65,13 +65,13 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     elif fallback_cwi_file.exists():
         actual_output = fallback_cwi_file
     else:
-        # AQUI: Exibe a saída completa do erro para podermos diagnosticar
-        error_details = result.stderr if result.stderr.strip() else result.stdout
+        # Exibe o erro real vindo do script transcribe.py
+        error_log = result.stderr.strip() or result.stdout.strip()
         raise RuntimeError(
-            f"O script de transcrição falhou e não gerou o arquivo JSON.\n"
-            f"---------------- Detalhes do Erro ----------------\n"
-            f"{error_details}\n"
-            f"--------------------------------------------------"
+            f"O script transcribe.py falhou antes de gerar o JSON.\n"
+            f"--- LOG DE ERRO DO TRANSMITTER ---\n"
+            f"{error_log}\n"
+            f"----------------------------------"
         )
 
     if return_ttml:
