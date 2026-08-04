@@ -58,7 +58,7 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     elif shutil.which("bun"):
         cmd = ["bun", "run", "opencaptions", "generate", str(video_file)]
     else:
-        cmd = ["npx", "opencaptions", "generate", str(video_file)]
+        cmd = [sys.executable, "-m", "opencaptions.transcribe", "--input", str(video_file)]
 
     result = subprocess.run(
         cmd,
