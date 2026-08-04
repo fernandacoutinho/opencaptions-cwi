@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Renderizador TTML - Caption with Intention 3D Ajustado</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Sans', system-ui, -apple-system, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      color: #38bdf8;
+    }
+
+    .main-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    .player-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background-color: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      
+      /* Ajuste 2: Reduzida a profundidade do espaço 3D para o efeito ser suave */
+      perspective: 1200px;
+      perspective-origin: 50% 50%;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* OVERLAY DAS LEGENDAS */
+    .subtitle-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+      overflow: visible;
+      background: transparent !important;
+      transform-style: preserve-3d;
+    }
+
+    .ttml-region {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      pointer-events: none;
+      white-space: pre-wrap;
+      word-break: break-word;
+      padding: 3%;
+      background: transparent !important;
+      transform-style: preserve-3d;
+    }
+
+    .ttml-region.align-before { justify-content: flex-start; }
+    .ttml-region.align-center { justify-content: center; }
+    .ttml-region.align-after { justify-content: flex-end; }
+
+    .ttml-paragraph {
+      display: block;
+      width: 100%;
+      line-height: 1.5;
+      text-align: center;
+      font-size: clamp(2.2rem, 4.2vw, 4.2rem);
+      margin-bottom: 6px;
+      background: transparent !important;
+      transform-style: preserve-3d;
+    }
+
+    /* 1. PALAVRA INATIVA (Fora do destaque) */
+    .ttml-word {
+      display: inline-block;
+      white-space: pre-wrap;
+      color: var(--speaker-color, #ffffff);
+      background: transparent !important;
+      opacity: 0.45;
+      font-weight: 600;
+      margin: 0 0.12em;
+      
+      transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.4, 1), 
+                  font-weight 0.1s ease,
+                  color 0.1s ease, 
+                  opacity 0.1s ease,
+                  text-shadow 0.12s ease;
+                  
+      transform-origin: center bottom;
+      transform-style: preserve-3d;
+      will-change: transform, font-weight, color, opacity, text-shadow;
+      
+      text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.8);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 2. PALAVRA ATIVA (Efeito 3D Suavizado + Multiplicador de Ênfase) */
+    .ttml-word.active {
+      color: var(--active-color, #ffff00) !important;
+      background: transparent !important;
+      opacity: 1 !important;
+      
+      /* Ajuste 2 e 3: 
+         - Deslocamento Y e Z bem menores (efeito 3D suave)
+         - Multiplicador dinâmico: a escala base é 1.12x e multiplica pelo peso da palavra (--word-weight-factor)
+      */
+      transform: translateY(-4px) translateZ(18px) scale(calc(1.12 * var(--word-weight-factor, 1)));
+      font-weight: var(--computed-font-weight, 800) !important;
+      
+      text-shadow: 
+        0px 6px 12px rgba(0, 0, 0, 0.9),
+        0px 2px 4px rgba(0, 0, 0, 0.7),
+        0px 0px 10px var(--active-color, rgba(255, 255, 0, 0.35));
+      
+      z-index: 50;
+      position: relative;
+    }
+
+    /* 3. PALAVRA JÁ FALADA */
+    .ttml-word.spoken {
+      color: var(--active-color, #ffff00) !important;
+      background: transparent !important;
+      opacity: 0.85 !important;
+      font-weight: 600;
+      transform: translateY(0) translateZ(0px) scale(1);
+      margin: 0 0.12em;
+      z-index: 2;
+      text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    .controls-panel {
+      display: flex;
+      gap: 12px;
+      background-color: #1e293b;
+      padding: 15px;
+      border-radius: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background-color: #0284c7;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: background-color 0.2s;
+    }
+
+    .btn:hover { background-color: #0369a1; }
+    input[type="file"] { display: none; }
+    .file-status { font-size: 0.85rem; color: #94a3b8; }
+
+    .debug-panel {
+      background-color: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 15px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #38bdf8;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    .debug-item {
+      background-color: #0f172a;
+      padding: 10px;
+      border-radius: 4px;
+      border-left: 3px solid #0284c7;
+    }
+
+    .debug-label {
+      font-weight: bold;
+      color: #94a3b8;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .debug-value {
+      color: #f1f5f9;
+      white-space: pre-wrap;
+      max-height: 100px;
+      overflow-y: auto;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>TTML Renderer Pro - Caption with Intention 3D</h1>
+
+  <div class="main-container">
+    <div class="player-wrapper" id="playerWrapper">
+      <video id="videoPlayer" controls preload="metadata"></video>
+      <div id="subtitleOverlay" class="subtitle-overlay"></div>
+    </div>
+
+    <div class="controls-panel">
+      <label class="btn">
+        Carregar Vídeo MP4
+        <input type="file" id="videoInput" accept="video/mp4,video/*">
+      </label>
+      <span class="file-status" id="videoStatus">Nenhum vídeo carregado</span>
+
+      <label class="btn" style="background-color: #0d9488;">
+        Carregar TTML
+        <input type="file" id="ttmlInput" accept=".ttml,.xml">
+      </label>
+      <span class="file-status" id="ttmlStatus">Nenhum TTML carregado</span>
+    </div>
+
+    <div class="debug-panel">
+      <div class="debug-item">
+        <span class="debug-label">Tempo do Vídeo:</span>
+        <div id="debugTime" class="debug-value">0.000s</div>
+      </div>
+      <div class="debug-item">
+        <span class="debug-label">Parágrafos Detectados:</span>
+        <div id="debugTotalPs" class="debug-value">0</div>
+      </div>
+      <div class="debug-item">
+        <span class="debug-label">Parágrafo Ativo:</span>
+        <div id="debugParagraphs" class="debug-value">Nenhum</div>
+      </div>
+      <div class="debug-item" style="grid-column: 1 / -1;">
+        <span class="debug-label">Palavras na Janela de Legenda (Peso / Multiplicador):</span>
+        <div id="debugSpans" class="debug-value">Nenhum</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    class TTMLStyle {
+      constructor() {
+        this.color = null;
+        this.backgroundColor = null;
+        this.fontFamily = null;
+        this.fontSize = null;
+        this.fontWeight = null;
+        this.fontStyle = null;
+        this.textDecoration = null;
+        this.textAlign = null;
+        this.lineHeight = null;
+        this.activeColor = null;
+        this.scale = null;
+        this.intensity = null;
+      }
+
+      inheritFrom(parentStyle) {
+        if (!parentStyle) return this;
+        const merged = new TTMLStyle();
+        Object.keys(this).forEach(key => {
+          merged[key] = this[key] !== null ? this[key] : parentStyle[key];
+        });
+        return merged;
+      }
+
+      toCSS() {
+        const css = {};
+        if (this.color) css.color = TTMLStyleUtils.parseColor(this.color);
+        if (this.fontFamily) css.fontFamily = this.fontFamily;
+        if (this.fontSize) css.fontSize = TTMLStyleUtils.parseFontSize(this.fontSize);
+        if (this.fontStyle) css.fontStyle = this.fontStyle;
+        if (this.textDecoration) css.textDecoration = this.textDecoration;
+        if (this.textAlign) css.textAlign = this.textAlign;
+        if (this.lineHeight) css.lineHeight = this.lineHeight;
+
+        return css;
+      }
+    }
+
+    class TTMLStyleUtils {
+      static parseColor(colorStr) {
+        if (!colorStr) return null;
+        colorStr = colorStr.trim();
+        if (colorStr.startsWith('#') && colorStr.length === 9) {
+          const r = parseInt(colorStr.substring(1, 3), 16);
+          const g = parseInt(colorStr.substring(3, 5), 16);
+          const b = parseInt(colorStr.substring(5, 7), 16);
+          const a = (parseInt(colorStr.substring(7, 9), 16) / 255).toFixed(2);
+          return `rgba(${r}, ${g}, ${b}, ${a})`;
+        }
+        return colorStr;
+      }
+
+      static parseFontSize(sizeStr) {
+        if (!sizeStr) return null;
+        if (sizeStr.endsWith('c')) {
+          const val = parseFloat(sizeStr);
+          return `${val * 2.2}rem`;
+        }
+        return sizeStr;
+      }
+    }
+
+    class TTMLRegion {
+      constructor(id = 'default') {
+        this.id = id;
+        this.origin = '0% 70%';
+        this.extent = '100% 25%';
+        this.displayAlign = 'after';
+        this.style = new TTMLStyle();
+      }
+    }
+
+    class TTMLNode {
+      constructor(type, begin = null, end = null) {
+        this.type = type;
+        this.begin = begin;
+        this.end = end;
+        this.style = new TTMLStyle();
+        this.regionId = null;
+        this.children = [];
+        this.text = '';
+        this.computedStyle = new TTMLStyle();
+      }
+
+      isActive(currentTime) {
+        const hasBegin = this.begin !== null && !isNaN(this.begin);
+        const hasEnd = this.end !== null && !isNaN(this.end);
+
+        if (hasBegin && hasEnd) {
+          return currentTime >= this.begin && currentTime < this.end;
+        }
+        if (hasBegin) {
+          return currentTime >= this.begin;
+        }
+        if (hasEnd) {
+          return currentTime < this.end;
+        }
+        return true;
+      }
+
+      isSpoken(currentTime) {
+        return this.end !== null && currentTime >= this.end;
+      }
+    }
+
+    class TTMLDocument {
+      constructor() {
+        this.styles = new Map();
+        this.regions = new Map();
+        this.body = null;
+        this.allParagraphs = [];
+        this.frameRate = 30;
+        this.subFrameRate = 1;
+        this.tickRate = 1;
+      }
+    }
+
+    class TTMLParserUtils {
+      static parseTime(timeStr, docHeaderParams = { frameRate: 30, tickRate: 1 }) {
+        if (!timeStr) return null;
+        timeStr = timeStr.trim();
+
+        if (timeStr.endsWith('t')) {
+          return parseFloat(timeStr.replace('t', '')) / docHeaderParams.tickRate;
+        }
+        if (timeStr.endsWith('ms')) {
+          return parseFloat(timeStr.replace('ms', '')) / 1000;
+        }
+        if (timeStr.endsWith('s')) {
+          return parseFloat(timeStr.replace('s', ''));
+        }
+        if (timeStr.endsWith('f')) {
+          return parseFloat(timeStr.replace('f', '')) / docHeaderParams.frameRate;
+        }
+
+        const parts = timeStr.split(':');
+        if (parts.length === 4) {
+          const h = parseFloat(parts[0]) * 3600;
+          const m = parseFloat(parts[1]) * 60;
+          const s = parseFloat(parts[2]);
+          const f = parseFloat(parts[3]) / docHeaderParams.frameRate;
+          return h + m + s + f;
+        }
+        if (parts.length === 3) {
+          return (parseFloat(parts[0]) * 3600) + (parseFloat(parts[1]) * 60) + parseFloat(parts[2]);
+        }
+        if (parts.length === 2) {
+          return (parseFloat(parts[0]) * 60) + parseFloat(parts[1]);
+        }
+
+        const num = parseFloat(timeStr);
+        return isNaN(num) ? null : num;
+      }
+
+      static parseStyleAttributes(xmlElement) {
+        const style = new TTMLStyle();
+        const getAttr = (name) => 
+          xmlElement.getAttribute(`tts:${name}`) || 
+          xmlElement.getAttribute(`cwi:${name}`) || 
+          xmlElement.getAttribute(name) || 
+          null;
+
+        style.color = getAttr('color');
+        style.fontFamily = getAttr('fontFamily');
+        style.fontSize = getAttr('fontSize');
+        style.fontWeight = getAttr('fontWeight');
+        style.fontStyle = getAttr('fontStyle');
+        style.textDecoration = getAttr('textDecoration');
+        style.textAlign = getAttr('textAlign');
+        style.lineHeight = getAttr('lineHeight');
+        
+        style.activeColor = getAttr('activeColor');
+        style.scale = getAttr('scale') || getAttr('volume') || getAttr('weight');
+        style.intensity = getAttr('intensity');
+
+        return style;
+      }
+    }
+
+    class TTMLParser {
+      constructor() {
+        this.domParser = new DOMParser();
+      }
+
+      parse(xmlString) {
+        const xmlDoc = this.domParser.parseFromString(xmlString, 'text/xml');
+        if (xmlDoc.querySelector('parsererror')) {
+          throw new Error('Erro de sintaxe no arquivo XML/TTML.');
+        }
+
+        const ttmlDoc = new TTMLDocument();
+        const ttEl = xmlDoc.querySelector('tt');
+
+        if (ttEl) {
+          const fr = ttEl.getAttribute('ttp:frameRate');
+          if (fr) ttmlDoc.frameRate = parseInt(fr, 10);
+          const tr = ttEl.getAttribute('ttp:tickRate');
+          if (tr) ttmlDoc.tickRate = parseInt(tr, 10);
+        }
+
+        const head = xmlDoc.querySelector('head');
+        if (head) {
+          this.parseStyles(head, ttmlDoc);
+          this.parseRegions(head, ttmlDoc);
+        }
+
+        const bodyEl = xmlDoc.querySelector('body');
+        if (bodyEl) {
+          ttmlDoc.body = this.parseNode(bodyEl, null, ttmlDoc);
+        }
+
+        return ttmlDoc;
+      }
+
+      parseStyles(headEl, doc) {
+        const styleElements = headEl.querySelectorAll('styling style, style');
+        styleElements.forEach(el => {
+          const id = el.getAttribute('xml:id') || el.getAttribute('id');
+          if (id) {
+            const style = TTMLParserUtils.parseStyleAttributes(el);
+            doc.styles.set(id, style);
+          }
+        });
+      }
+
+      parseRegions(headEl, doc) {
+        const regionElements = headEl.querySelectorAll('layout region, region');
+        regionElements.forEach(el => {
+          const id = el.getAttribute('xml:id') || el.getAttribute('id');
+          if (id) {
+            const region = new TTMLRegion(id);
+            region.origin = el.getAttribute('tts:origin') || region.origin;
+            region.extent = el.getAttribute('tts:extent') || region.extent;
+            region.displayAlign = el.getAttribute('tts:displayAlign') || region.displayAlign;
+            region.style = TTMLParserUtils.parseStyleAttributes(el);
+            doc.regions.set(id, region);
+          }
+        });
+      }
+
+      parseNode(xmlNode, parentNode = null, doc) {
+        const tagName = xmlNode.tagName.toLowerCase();
+
+        const beginAttr = xmlNode.getAttribute('begin');
+        const endAttr = xmlNode.getAttribute('end');
+        const durAttr = xmlNode.getAttribute('dur');
+
+        let begin = TTMLParserUtils.parseTime(beginAttr, doc);
+        let end = TTMLParserUtils.parseTime(endAttr, doc);
+        const dur = TTMLParserUtils.parseTime(durAttr, doc);
+
+        if (begin === null && parentNode) begin = parentNode.begin;
+        if (end === null && dur !== null && begin !== null) {
+          end = begin + dur;
+        }
+        if (end === null && parentNode) end = parentNode.end;
+
+        const node = new TTMLNode(tagName, begin, end);
+        node.regionId = xmlNode.getAttribute('region') || (parentNode ? parentNode.regionId : null);
+
+        let nodeStyle = TTMLParserUtils.parseStyleAttributes(xmlNode);
+        const styleId = xmlNode.getAttribute('style');
+        if (styleId && doc.styles.has(styleId)) {
+          nodeStyle = nodeStyle.inheritFrom(doc.styles.get(styleId));
+        }
+
+        const parentStyle = parentNode ? parentNode.computedStyle : null;
+        node.computedStyle = nodeStyle.inheritFrom(parentStyle);
+
+        if (tagName === 'p') {
+          doc.allParagraphs.push(node);
+        }
+
+        xmlNode.childNodes.forEach(child => {
+          if (child.nodeType === Node.TEXT_NODE) {
+            const rawText = child.textContent.replace(/[\r\n\t]+/g, ' ');
+            if (rawText.length > 0) {
+              const textNode = new TTMLNode('text', node.begin, node.end);
+              textNode.text = rawText;
+              textNode.computedStyle = node.computedStyle;
+              node.children.push(textNode);
+            }
+          } else if (child.nodeType === Node.ELEMENT_NODE) {
+            const childTagName = child.tagName.toLowerCase();
+            if (['div', 'p', 'span', 'br'].includes(childTagName)) {
+              if (childTagName === 'br') {
+                const brNode = new TTMLNode('br', node.begin, node.end);
+                brNode.text = '\n';
+                node.children.push(brNode);
+              } else {
+                node.children.push(this.parseNode(child, node, doc));
+              }
+            }
+          }
+        });
+
+        if (tagName === 'p' && node.end === null && node.children.length > 0) {
+          const maxEnd = Math.max(...node.children.map(c => c.end || 0));
+          if (maxEnd > 0) node.end = maxEnd;
+        }
+
+        return node;
+      }
+    }
+
+    class TTMLRenderer {
+      constructor(containerEl) {
+        this.container = containerEl;
+        this.document = null;
+        this.renderedRegions = new Map();
+        
+        /* Ajuste 1: Quantas palavras exibir por vez na tela (Janela estilo Shorts/Reels) */
+        this.maxVisibleWords = 4; 
+      }
+
+      setDocument(doc) {
+        this.document = doc;
+        this.clear();
+        this.setupRegions();
+      }
+
+      clear() {
+        this.container.innerHTML = '';
+        this.renderedRegions.clear();
+      }
+
+      setupRegions() {
+        if (!this.document) return;
+
+        if (this.document.regions.size === 0) {
+          this.document.regions.set('default', new TTMLRegion('default'));
+        }
+
+        this.document.regions.forEach(region => {
+          const regionDiv = document.createElement('div');
+          regionDiv.className = `ttml-region align-${region.displayAlign}`;
+          
+          const originParts = (region.origin || '0% 70%').split(/\s+/);
+          const extentParts = (region.extent || '100% 25%').split(/\s+/);
+
+          regionDiv.style.left = originParts[0] || '0%';
+          regionDiv.style.top = originParts[1] || '70%';
+          regionDiv.style.width = extentParts[0] || '100%';
+          regionDiv.style.height = extentParts[1] || '25%';
+
+          Object.assign(regionDiv.style, region.style.toCSS());
+          this.container.appendChild(regionDiv);
+          this.renderedRegions.set(region.id, regionDiv);
+        });
+      }
+
+      update(currentTime) {
+        if (!this.document || !this.document.body) return { activePs: [], activeSpans: [] };
+
+        this.renderedRegions.forEach(el => el.innerHTML = '');
+
+        const activePs = [];
+        const activeSpans = [];
+
+        this.traverse(this.document.body, currentTime, activePs, activeSpans);
+
+        return { activePs, activeSpans };
+      }
+
+      traverse(node, currentTime, activePs, activeSpans) {
+        if (node.type === 'p') {
+          if (node.isActive(currentTime)) {
+            activePs.push(node);
+            const targetRegionId = node.regionId || 'default';
+            const regionContainer = this.renderedRegions.get(targetRegionId) || this.renderedRegions.get('default');
+
+            if (regionContainer) {
+              const pEl = document.createElement('p');
+              pEl.className = 'ttml-paragraph';
+              Object.assign(pEl.style, node.computedStyle.toCSS());
+
+              this.renderCWIWordsWindow(node, pEl, currentTime, activeSpans);
+              regionContainer.appendChild(pEl);
+            }
+          }
+          return;
+        }
+
+        node.children.forEach(child => this.traverse(child, currentTime, activePs, activeSpans));
+      }
+
+      renderCWIWordsWindow(parentNode, pHTMLElement, currentTime, activeSpans) {
+        // Coleta todos os spans (palavras)
+        const wordSpans = parentNode.children.filter(c => c.type === 'span');
+        if (wordSpans.length === 0) return;
+
+        // Descobre o índice da palavra atualmente ativa
+        let activeIndex = wordSpans.findIndex(span => span.isActive(currentTime));
+
+        // Se nenhuma está ativa agora, pega a mais próxima que já foi falada ou a primeira
+        if (activeIndex === -1) {
+          activeIndex = wordSpans.findIndex(span => span.begin > currentTime);
+          if (activeIndex > 0) activeIndex -= 1;
+          else if (activeIndex === -1) activeIndex = wordSpans.length - 1;
+        }
+
+        /* AJUSTE 1: Exibir apenas um pequeno bloco de palavras por vez */
+        const windowSize = this.maxVisibleWords;
+        const startIdx = Math.floor(activeIndex / windowSize) * windowSize;
+        const endIdx = Math.min(startIdx + windowSize, wordSpans.length);
+
+        const visibleSpans = wordSpans.slice(startIdx, endIdx);
+
+        visibleSpans.forEach((child, index) => {
+          const isWordActive = child.isActive(currentTime);
+          const isWordSpoken = child.isSpoken(currentTime);
+
+          if (isWordActive) {
+            activeSpans.push(child);
+          }
+
+          const spanEl = document.createElement('span');
+          
+          let statusClass = '';
+          if (isWordActive) statusClass = 'active';
+          else if (isWordSpoken) statusClass = 'spoken';
+
+          spanEl.className = `ttml-word ${statusClass}`.trim();
+
+          const baseCSS = child.computedStyle.toCSS();
+          Object.assign(spanEl.style, baseCSS);
+
+          /* AJUSTE 3: Leitura e Aplicação do Multiplicador de Ênfase da Palavra */
+          let rawValue = child.computedStyle.scale || child.computedStyle.intensity;
+          let weightMultiplier = 1.0; // Multiplicador base padrao = 1
+
+          if (rawValue !== null && rawValue !== undefined) {
+            const parsedVal = parseFloat(rawValue);
+            if (!isNaN(parsedVal) && parsedVal > 0) {
+              weightMultiplier = parsedVal;
+            }
+          }
+
+          // Peso da fonte proporcional ao multiplicador (ex: de 500 até 900)
+          let calculatedFontWeight = Math.min(900, Math.max(500, Math.round(600 * weightMultiplier)));
+
+          // Define as propriedades CSS dinâmicas enviadas para o CSS
+          spanEl.style.setProperty('--word-weight-factor', weightMultiplier);
+          spanEl.style.setProperty('--computed-font-weight', calculatedFontWeight);
+
+          if (child.computedStyle.color) {
+            spanEl.style.setProperty('--speaker-color', TTMLStyleUtils.parseColor(child.computedStyle.color));
+          }
+
+          if (child.computedStyle.activeColor) {
+            spanEl.style.setProperty('--active-color', TTMLStyleUtils.parseColor(child.computedStyle.activeColor));
+          }
+
+          // Insere o texto da palavra
+          const textContent = child.children.map(c => c.text || '').join('');
+          spanEl.textContent = textContent;
+
+          pHTMLElement.appendChild(spanEl);
+
+          // Espaçamento entre palavras
+          if (index < visibleSpans.length - 1) {
+            pHTMLElement.appendChild(document.createTextNode(' '));
+          }
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const videoPlayer = document.getElementById('videoPlayer');
+      const subtitleOverlay = document.getElementById('subtitleOverlay');
+      const videoInput = document.getElementById('videoInput');
+      const ttmlInput = document.getElementById('ttmlInput');
+      const videoStatus = document.getElementById('videoStatus');
+      const ttmlStatus = document.getElementById('ttmlStatus');
+
+      const debugTime = document.getElementById('debugTime');
+      const debugTotalPs = document.getElementById('debugTotalPs');
+      const debugParagraphs = document.getElementById('debugParagraphs');
+      const debugSpans = document.getElementById('debugSpans');
+
+      const parser = new TTMLParser();
+      const renderer = new TTMLRenderer(subtitleOverlay);
+      let animationFrameId = null;
+
+      videoInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          videoPlayer.src = URL.createObjectURL(file);
+          videoStatus.textContent = file.name;
+        }
+      });
+
+      ttmlInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const ttmlDoc = parser.parse(evt.target.result);
+              renderer.setDocument(ttmlDoc);
+              ttmlStatus.textContent = file.name;
+              debugTotalPs.textContent = ttmlDoc.allParagraphs.length;
+            } catch (err) {
+              alert(`Erro no TTML: ${err.message}`);
+              ttmlStatus.textContent = 'Erro ao processar';
+            }
+          };
+          reader.readAsText(file);
+        }
+      });
+
+      function renderLoop() {
+        const currentTime = videoPlayer.currentTime;
+        debugTime.textContent = `${currentTime.toFixed(3)}s`;
+
+        const debugData = renderer.update(currentTime);
+
+        if (debugData) {
+          debugParagraphs.textContent = debugData.activePs
+            .map(p => `[${p.begin !== null ? p.begin.toFixed(2) : 0}s - ${p.end !== null ? p.end.toFixed(2) : '∞'}s]`)
+            .join('\n') || 'Nenhum';
+
+          debugSpans.textContent = debugData.activeSpans
+            .map(s => {
+              const text = s.children.map(c => c.text || '').join('');
+              const mult = s.computedStyle.scale || s.computedStyle.intensity || '1.0 (padrão)';
+              return `"${text}" [Multiplicador Ênfase: ${mult}]`;
+            })
+            .join(' | ') || 'Nenhum';
+        }
+
+        animationFrameId = requestAnimationFrame(renderLoop);
+      }
+
+      videoPlayer.addEventListener('play', () => {
+        if (!animationFrameId) animationFrameId = requestAnimationFrame(renderLoop);
+      });
+
+      videoPlayer.addEventListener('pause', () => {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      });
+
+      videoPlayer.addEventListener('seeked', () => {
+        renderer.update(videoPlayer.currentTime);
+      });
+
+      animationFrameId = requestAnimationFrame(renderLoop);
+    });
+  </script>
+</body>
+</html>

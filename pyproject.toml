@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opencaptions"
+version = "0.1.0"
+description = "Ferramenta para conversao e geracao de legendas TTML com enfase 3D."
+readme = "README.md"
+authors = [
+    { name = "Fernanda Coutinho" }
+]
+requires-python = ">=3.9"
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["."]
