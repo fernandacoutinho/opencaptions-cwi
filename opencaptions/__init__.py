@@ -65,53 +65,77 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
     except Exception as e:
         raise RuntimeError(f"Erro ao decodificar JSON do transcribe.py: {e}\nSaída recebida: {result.stdout[:300]}")
 
-    # Flexibiliza a busca por segmentos em diferentes formatos que o Whisper/backend possam retornar
-    segments = []
-    if isinstance(raw_data, dict):
-        segments = raw_data.get("segments", raw_data.get("chunks", raw_data.get("captions", [])))
-        if not segments and "text" in raw_data:
-            segments = [raw_data]
-    elif isinstance(raw_data, list):
-        segments = raw_data
-
     cwi_blocks = []
-    for seg in segments:
-        block_id = str(uuid.uuid4())
-        start = float(seg.get("start", seg.get("from", 0.0)))
-        end = float(seg.get("end", seg.get("to", start + 1.0)))
-        speaker_id = str(seg.get("speaker", seg.get("speaker_id", "S0")))
-        
-        words_raw = seg.get("words", [])
-        if not words_raw and "text" in seg:
-            text_tokens = seg["text"].split()
-            duration = max(0.1, end - start)
-            token_duration = duration / max(1, len(text_tokens))
-            words_raw = []
-            for idx, token in enumerate(text_tokens):
-                w_start = start + (idx * token_duration)
-                w_end = w_start + token_duration
-                words_raw.append({"text": token, "start": w_start, "end": w_end})
 
+    # 1. Caso venha no formato padrão do transcribe.py com a chave "words" direto na raiz
+    if isinstance(raw_data, dict) and "words" in raw_data and isinstance(raw_data["words"], list) and raw_data["words"]:
         formatted_words = []
-        for w in words_raw:
+        for w in raw_data["words"]:
             formatted_words.append({
                 "text": str(w.get("text", w.get("word", ""))),
-                "start": float(w.get("start", w.get("from", start))),
-                "end": float(w.get("end", w.get("to", end))),
+                "start": float(w.get("start", w.get("from", 0.0))),
+                "end": float(w.get("end", w.get("to", 0.0))),
                 "weight": int(w.get("weight", 500)),
                 "size": float(w.get("size", 1.096835)),
                 "emphasis": bool(w.get("emphasis", False))
             })
+        
+        if formatted_words:
+            cwi_blocks.append({
+                "id": str(uuid.uuid4()),
+                "start": formatted_words[0]["start"],
+                "end": formatted_words[-1]["end"],
+                "speaker_id": "S0",
+                "words": formatted_words
+            })
 
-        cwi_blocks.append({
-            "id": block_id,
-            "start": start,
-            "end": end,
-            "speaker_id": speaker_id,
-            "words": formatted_words
-        })
+    # 2. Caso contrário, flexibiliza a busca por segmentos/chunks/captions
+    if not cwi_blocks:
+        segments = []
+        if isinstance(raw_data, dict):
+            segments = raw_data.get("segments", raw_data.get("chunks", raw_data.get("captions", [])))
+            if not segments and "text" in raw_data:
+                segments = [raw_data]
+        elif isinstance(raw_data, list):
+            segments = raw_data
 
-    # Se mesmo assim vier vazio, criamos um bloco fallback com o texto bruto caso o raw_data contenha algo
+        for seg in segments:
+            block_id = str(uuid.uuid4())
+            start = float(seg.get("start", seg.get("from", 0.0)))
+            end = float(seg.get("end", seg.get("to", start + 1.0)))
+            speaker_id = str(seg.get("speaker", seg.get("speaker_id", "S0")))
+            
+            words_raw = seg.get("words", [])
+            if not words_raw and "text" in seg:
+                text_tokens = seg["text"].split()
+                duration = max(0.1, end - start)
+                token_duration = duration / max(1, len(text_tokens))
+                words_raw = []
+                for idx, token in enumerate(text_tokens):
+                    w_start = start + (idx * token_duration)
+                    w_end = w_start + token_duration
+                    words_raw.append({"text": token, "start": w_start, "end": w_end})
+
+            formatted_words = []
+            for w in words_raw:
+                formatted_words.append({
+                    "text": str(w.get("text", w.get("word", ""))),
+                    "start": float(w.get("start", w.get("from", start))),
+                    "end": float(w.get("end", w.get("to", end))),
+                    "weight": int(w.get("weight", 500)),
+                    "size": float(w.get("size", 1.096835)),
+                    "emphasis": bool(w.get("emphasis", False))
+                })
+
+            cwi_blocks.append({
+                "id": block_id,
+                "start": start,
+                "end": end,
+                "speaker_id": speaker_id,
+                "words": formatted_words
+            })
+
+    # 3. Fallback final se tudo vier vazio mas houver texto bruto
     if not cwi_blocks and isinstance(raw_data, dict) and "text" in raw_data:
         text_content = raw_data["text"]
         cwi_blocks.append({
