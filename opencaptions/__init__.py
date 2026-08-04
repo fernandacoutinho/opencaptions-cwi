@@ -146,7 +146,7 @@ def process_video(video_path: str, output_cwi: str = None, return_ttml: bool = F
             "words": [{"text": t, "start": 0.0, "end": 5.0, "weight": 500, "size": 1.096835, "emphasis": False} for t in text_content.split()]
         })
 
-    output_data = cwi_blocks[0] if len(cwi_blocks) == 1 else {"captions": cwi_blocks}
+    output_data = {"captions": cwi_blocks}
     with open(output_cwi_file, "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
 
