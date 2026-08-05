@@ -2,62 +2,31 @@ import subprocess
 import sys
 from pathlib import Path
 
-def _get_base_dir():
-    """
-    Varre os locais possíveis onde o package.json e a pasta packages 
-    foram instalados pelo pip (tanto no site-packages quanto na raiz).
-    """
-    # 1. Olha na mesma pasta do __init__.py
-    current = Path(__file__).resolve().parent
-    if (current / "package.json").exists() and (current / "packages").exists():
-        return current
-        
-    # 2. Olha na pasta pai (caso estejam no nível do site-packages)
-    if (current.parent / "package.json").exists() and (current.parent / "packages").exists():
-        return current.parent
-        
-    # 3. Sobe subindo os diretórios até achar
-    temp = current
-    while temp != temp.parent:
-        if (temp / "package.json").exists() and (temp / "packages").exists():
-            return temp
-        temp = temp.parent
-        
-    # Fallback absolute para a pasta do __init__.py se nada mais for achado
-    return current
-
 def process_video(video_path: str, return_ttml: bool = False, output: str = None) -> str:
     video_file = Path(video_path).resolve()
     if not video_file.exists():
         raise FileNotFoundError(f"Vídeo não encontrado: {video_file}")
 
-    base_dir = _get_base_dir()
+    # A raiz onde os arquivos do monorepo foram instalados pelo pip
+    base_dir = Path(__file__).resolve().parent
 
-    # Validação rigorosa para garantir que o package.json existe antes de chamar o Bun
-    if not (base_dir / "package.json").exists():
-        raise FileNotFoundError(
-            f"O 'package.json' não foi encontrado em '{base_dir}'. "
-            "Verifique se o pyproject.toml / MANIFEST.in copiou os arquivos da raiz."
-        )
-
-    cli_path = base_dir / "packages" / "cli" / "src" / "index.ts"
-    if not cli_path.exists():
-        cli_path = base_dir / "packages" / "cli" / "dist" / "index.js"
+    # Caminho absoluto ou relativo para a CLI compilada (JavaScript)
+    # Isso evita totalmente os erros de workspace do TypeScript em tempo de execução
+    cli_path = base_dir / "packages" / "cli" / "dist" / "index.js"
 
     if not cli_path.exists():
-        raise FileNotFoundError(f"O motor da CLI não foi encontrado em: {cli_path}")
+        # Se não estiver compilado na máquina de destino, tenta rodar o build do turbo/bun
+        print("[*] Compilando pacotes do monorepo pela primeira vez...")
+        res_build = subprocess.run(["bun", "run", "build"], cwd=base_dir, capture_output=True, text=True)
+        if res_build.returncode != 0:
+            raise RuntimeError(f"Erro ao compilar o monorepo:\n{res_build.stderr.strip()}")
 
-    # Configura o ambiente Bun se o node_modules não existir na raiz correta
-    node_modules = base_dir / "node_modules"
-    if not node_modules.exists():
-        print(f"[*] Configurando dependências do Bun em '{base_dir}'...")
-        res_install = subprocess.run(["bun", "install"], cwd=base_dir, capture_output=True, text=True)
-        if res_install.returncode != 0:
-            raise RuntimeError(f"Erro ao rodar bun install:\n{res_install.stderr.strip()}")
-        print("[+] Dependências configuradas com sucesso!")
+    if not cli_path.exists():
+        raise FileNotFoundError(f"O motor compilado da CLI não foi encontrado em: {cli_path}")
 
     json_output = output or str(video_file.with_suffix(".cwi.json"))
 
+    # Executa o script JavaScript compilado via Bun
     cmd = ["bun", "run", str(cli_path), "generate", str(video_file), "--output", json_output]
     
     print(f"[*] Executando pipeline via OpenCaptions...")
