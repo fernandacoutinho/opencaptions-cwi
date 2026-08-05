@@ -12,6 +12,9 @@ dependencies = [
     "openai-whisper",
 ]
 
+[project.scripts]
+opencaptions = "opencaptions:main"
+
 [tool.setuptools]
 include-package-data = true
 
