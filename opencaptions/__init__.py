@@ -2,71 +2,36 @@ import subprocess
 import sys
 from pathlib import Path
 
-def _find_monorepo_root():
-    """
-    Procura de forma inteligente onde está o package.json principal 
-    do monorepo, seja no diretório atual ou dentro da instalação do site-packages.
-    """
-    # 1. Começa a procurar a partir da pasta do próprio arquivo __init__.py instalado
-    start_path = Path(__file__).resolve().parent
-    current = start_path
-    
-    while current != current.parent:
-        if (current / "package.json").exists() and (current / "packages").exists():
-            return current
-        current = current.parent
-
-    # 2. Se não achou subindo, tenta olhar no diretório de trabalho atual (onde o usuário chamou o script)
-    current = Path.cwd()
-    while current != current.parent:
-        if (current / "package.json").exists() and (current / "packages").exists():
-            return current
-        current = current.parent
-
-    # Fallback para o diretório atual
-    return Path.cwd()
-
-def _ensure_bun_dependencies(base_dir: Path):
-    """
-    Garante que as dependências do Bun estão instaladas na raiz correta do monorepo.
-    """
-    node_modules = base_dir / "node_modules"
-    pkg_json = base_dir / "package.json"
-    
-    if not pkg_json.exists():
-        raise FileNotFoundError(
-            f"O arquivo 'package.json' não foi encontrado em '{base_dir}'. "
-            "Certifique-se de que o pacote foi empacotado corretamente com todos os arquivos do monorepo."
-        )
-
-    if not node_modules.exists():
-        print(f"[*] Instalando dependências do Bun em {base_dir}...")
-        result = subprocess.run(["bun", "install"], cwd=base_dir, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"Erro ao rodar 'bun install':\n{result.stderr.strip()}")
-        print("[+] Dependências instaladas com sucesso!")
-
 def process_video(video_path: str, return_ttml: bool = False, output: str = None) -> str:
     video_file = Path(video_path).resolve()
     if not video_file.exists():
         raise FileNotFoundError(f"Vídeo não encontrado: {video_file}")
 
-    # Descobre a raiz exata do monorepo
-    base_dir = _find_monorepo_root()
-    
-    # Garante o bun install no lugar certo
-    _ensure_bun_dependencies(base_dir)
+    # A raiz é SEMPRE a pasta onde este __init__.py está instalado (dentro do site-packages do Python)
+    base_dir = Path(__file__).resolve().parent
 
-    # Localiza o arquivo da CLI
+    # Caminho onde a CLI compilada ou o index.ts deve estar empacotado dentro do seu pacote
     cli_path = base_dir / "packages" / "cli" / "src" / "index.ts"
     if not cli_path.exists():
         cli_path = base_dir / "packages" / "cli" / "dist" / "index.js"
 
     if not cli_path.exists():
-        raise FileNotFoundError(f"Não foi possível encontrar o arquivo de entrada da CLI em: {cli_path}")
+        raise FileNotFoundError(
+            f"O motor do OpenCaptions não foi encontrado dentro do pacote instalado em: {base_dir}. "
+            "Verifique se o MANIFEST.in incluiu a pasta 'packages'."
+        )
+
+    # Verifica se as dependências do Bun já foram instaladas dentro da pasta do pacote
+    node_modules = base_dir / "node_modules"
+    if not node_modules.exists():
+        print("[*] Configurando o ambiente pela primeira vez...")
+        res_install = subprocess.run(["bun", "install"], cwd=base_dir, capture_output=True, text=True)
+        if res_install.returncode != 0:
+            raise RuntimeError(f"Erro ao preparar o ambiente do Bun:\n{res_install.stderr.strip()}")
 
     json_output = output or str(video_file.with_suffix(".cwi.json"))
 
+    # Roda a CLI usando o Bun apontando para os arquivos internos do pacote
     cmd = ["bun", "run", str(cli_path), "generate", str(video_file), "--output", json_output]
     
     print(f"[*] Executando pipeline via OpenCaptions...")
