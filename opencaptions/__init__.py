@@ -7,32 +7,30 @@ def process_video(video_path: str, return_ttml: bool = False, output: str = None
     if not video_file.exists():
         raise FileNotFoundError(f"Vídeo não encontrado: {video_file}")
 
-    # Sobe um nível para apontar para a raiz do repositório onde estão as pastas do monorepo
     base_dir = Path(__file__).resolve().parent.parent
-
     cli_path = base_dir / "packages" / "cli" / "dist" / "index.js"
 
-    # Se a versão compilada não existir (como em uma máquina limpa), prepara e compila o monorepo
     if not cli_path.exists():
-        print("[*] Configurando dependências do Bun na máquina...")
+        print("[*] Configurando dependências do Bun...")
         res_install = subprocess.run(["bun", "install"], cwd=base_dir, capture_output=True, text=True)
         if res_install.returncode != 0:
             raise RuntimeError(f"Erro ao rodar bun install:\n{res_install.stderr.strip()}")
 
-        print("[*] Compilando pacotes do monorepo pela primeira vez...")
+        print("[*] Compilando pacotes do monorepo na ordem correta...")
         
-        turbo_path = base_dir / "node_modules" / ".bin" / "turbo"
-        if not turbo_path.exists():
-            turbo_path = base_dir / "node_modules" / "turbo" / "bin" / "turbo.js"
-
-        if (base_dir / "turbo.json").exists() and turbo_path.exists():
-            cmd_build = ["bun", "run", str(turbo_path), "build"] if turbo_path.suffix == ".js" else [str(turbo_path), "build"]
-        else:
-            cmd_build = ["bun", "run", "build"]
-
-        res_build = subprocess.run(cmd_build, cwd=base_dir, capture_output=True, text=True)
-        if res_build.returncode != 0:
-            raise RuntimeError(f"Erro ao compilar o monorepo:\n{res_build.stderr.strip()}")
+        # Ordem de dependência: compila primeiro os tipos, depois os backends/módulos e por fim a CLI
+        subpackages = ["packages/types", "packages/backend-av", "packages/cli"]
+        
+        for subpkg in subpackages:
+            pkg_dir = base_dir / subpkg
+            if (pkg_dir / "package.json").exists():
+                print(f"[*] Compilando {subpkg}...")
+                res_build = subprocess.run(["bun", "run", "build"], cwd=pkg_dir, capture_output=True, text=True)
+                if res_build.returncode != 0:
+                    # Se falhar o build específico, tenta rodar o tsc direto se existir
+                    res_tsc = subprocess.run(["bun", "x", "tsc"], cwd=pkg_dir, capture_output=True, text=True)
+                    if res_tsc.returncode != 0:
+                        raise RuntimeError(f"Erro ao compilar {subpkg}:\n{res_build.stderr.strip()}\n{res_tsc.stderr.strip()}")
 
     if not cli_path.exists():
         raise FileNotFoundError(f"O motor compilado da CLI não foi encontrado em: {cli_path}")
