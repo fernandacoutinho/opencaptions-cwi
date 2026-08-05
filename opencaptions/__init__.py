@@ -7,17 +7,25 @@ def process_video(video_path: str, return_ttml: bool = False, output: str = None
     if not video_file.exists():
         raise FileNotFoundError(f"Vídeo não encontrado: {video_file}")
 
-    # A raiz onde os arquivos do monorepo foram instalados pelo pip
-    base_dir = Path(__file__).resolve().parent
+    # Ajuste: Sobe um nível para apontar para a raiz do repositório (onde está a pasta packages/)
+    base_dir = Path(__file__).resolve().parent.parent
 
-    # Caminho absoluto ou relativo para a CLI compilada (JavaScript)
-    # Isso evita totalmente os erros de workspace do TypeScript em tempo de execução
     cli_path = base_dir / "packages" / "cli" / "dist" / "index.js"
 
+    # Se a versão compilada não existir, compila o monorepo
     if not cli_path.exists():
-        # Se não estiver compilado na máquina de destino, tenta rodar o build do turbo/bun
         print("[*] Compilando pacotes do monorepo pela primeira vez...")
-        res_build = subprocess.run(["bun", "run", "build"], cwd=base_dir, capture_output=True, text=True)
+        
+        turbo_path = base_dir / "node_modules" / ".bin" / "turbo"
+        if not turbo_path.exists():
+            turbo_path = base_dir / "node_modules" / "turbo" / "bin" / "turbo.js"
+
+        if turbo_path.exists():
+            cmd_build = ["bun", "run", str(turbo_path), "build"] if turbo_path.suffix == ".js" else [str(turbo_path), "build"]
+        else:
+            cmd_build = ["bun", "run", "build"]
+
+        res_build = subprocess.run(cmd_build, cwd=base_dir, capture_output=True, text=True)
         if res_build.returncode != 0:
             raise RuntimeError(f"Erro ao compilar o monorepo:\n{res_build.stderr.strip()}")
 
@@ -26,7 +34,6 @@ def process_video(video_path: str, return_ttml: bool = False, output: str = None
 
     json_output = output or str(video_file.with_suffix(".cwi.json"))
 
-    # Executa o script JavaScript compilado via Bun
     cmd = ["bun", "run", str(cli_path), "generate", str(video_file), "--output", json_output]
     
     print(f"[*] Executando pipeline via OpenCaptions...")
