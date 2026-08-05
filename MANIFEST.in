@@ -4,10 +4,7 @@ include pyproject.toml
 include LICENSE
 include bun.lockb
 
-graft fixtures
-graft integrations
-graft packages
-graft scripts
-graft opencaptions
-
-global-include *.py *.ts *.js *.json *.html *.css *.sh *.md *.txt
+recursive-include packages *
+recursive-include scripts *
+recursive-include fixtures *
+recursive-include integrations *

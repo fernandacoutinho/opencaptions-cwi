@@ -22,11 +22,14 @@ include-package-data = true
 where = ["."]
 include = [
     "opencaptions*",
-    "packages*",
-    "scripts*",
-    "fixtures*",
-    "integrations*"
 ]
 
 [tool.setuptools.package-data]
-"*" = ["package.json", "bun.lockb", "packages/**/*", "scripts/**/*", "fixtures/**/*"]
+opencaptions = [
+    "../package.json",
+    "../bun.lockb",
+    "../packages/**/*",
+    "../scripts/**/*",
+    "../fixtures/**/*",
+    "../integrations/**/*"
+]
