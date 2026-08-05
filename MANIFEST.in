@@ -2,6 +2,7 @@ include README.md
 include package.json
 include pyproject.toml
 include LICENSE
+include bun.lockb
 
 graft fixtures
 graft integrations
