@@ -4,20 +4,27 @@ from pathlib import Path
 
 def _get_base_dir():
     """
-    Localiza a raiz onde os arquivos do monorepo foram instalados pelo pip
-    (procura tanto na pasta do pacote quanto no diretório pai no site-packages).
+    Varre os locais possíveis onde o package.json e a pasta packages 
+    foram instalados pelo pip (tanto no site-packages quanto na raiz).
     """
-    current = Path(__file__).resolve().parent  # Pasta opencaptions/
-    
-    # Procura subindo até achar onde o packages/ e o package.json foram instalados juntos
-    while current != current.parent:
-        if (current / "packages").exists() and (current / "package.json").exists():
-            return current
-        if (current.parent / "packages").exists() and (current.parent / "package.json").exists():
-            return current.parent
-        current = current.parent
+    # 1. Olha na mesma pasta do __init__.py
+    current = Path(__file__).resolve().parent
+    if (current / "package.json").exists() and (current / "packages").exists():
+        return current
         
-    return Path(__file__).resolve().parent.parent
+    # 2. Olha na pasta pai (caso estejam no nível do site-packages)
+    if (current.parent / "package.json").exists() and (current.parent / "packages").exists():
+        return current.parent
+        
+    # 3. Sobe subindo os diretórios até achar
+    temp = current
+    while temp != temp.parent:
+        if (temp / "package.json").exists() and (temp / "packages").exists():
+            return temp
+        temp = temp.parent
+        
+    # Fallback absolute para a pasta do __init__.py se nada mais for achado
+    return current
 
 def process_video(video_path: str, return_ttml: bool = False, output: str = None) -> str:
     video_file = Path(video_path).resolve()
@@ -26,23 +33,28 @@ def process_video(video_path: str, return_ttml: bool = False, output: str = None
 
     base_dir = _get_base_dir()
 
+    # Validação rigorosa para garantir que o package.json existe antes de chamar o Bun
+    if not (base_dir / "package.json").exists():
+        raise FileNotFoundError(
+            f"O 'package.json' não foi encontrado em '{base_dir}'. "
+            "Verifique se o pyproject.toml / MANIFEST.in copiou os arquivos da raiz."
+        )
+
     cli_path = base_dir / "packages" / "cli" / "src" / "index.ts"
     if not cli_path.exists():
         cli_path = base_dir / "packages" / "cli" / "dist" / "index.js"
 
     if not cli_path.exists():
-        raise FileNotFoundError(
-            f"O motor do OpenCaptions não foi encontrado em: {base_dir}. "
-            "Verifique se o pyproject.toml incluiu a pasta 'packages'."
-        )
+        raise FileNotFoundError(f"O motor da CLI não foi encontrado em: {cli_path}")
 
-    # Configura o ambiente Bun se o node_modules não existir na pasta instalada
+    # Configura o ambiente Bun se o node_modules não existir na raiz correta
     node_modules = base_dir / "node_modules"
     if not node_modules.exists():
-        print("[*] Configurando dependências do Bun na máquina...")
+        print(f"[*] Configurando dependências do Bun em '{base_dir}'...")
         res_install = subprocess.run(["bun", "install"], cwd=base_dir, capture_output=True, text=True)
         if res_install.returncode != 0:
             raise RuntimeError(f"Erro ao rodar bun install:\n{res_install.stderr.strip()}")
+        print("[+] Dependências configuradas com sucesso!")
 
     json_output = output or str(video_file.with_suffix(".cwi.json"))
 
