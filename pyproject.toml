@@ -29,11 +29,4 @@ include = [
 ]
 
 [tool.setuptools.package-data]
-opencaptions = [
-    "packages/**/*",
-    "scripts/**/*",
-    "fixtures/**/*",
-    "integrations/**/*",
-    "package.json",
-    "bun.lockb"
-]
+"*" = ["package.json", "bun.lockb", "packages/**/*", "scripts/**/*", "fixtures/**/*"]
