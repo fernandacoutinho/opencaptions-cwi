@@ -27,3 +27,13 @@ include = [
     "fixtures*",
     "integrations*"
 ]
+
+[tool.setuptools.package-data]
+opencaptions = [
+    "packages/**/*",
+    "scripts/**/*",
+    "fixtures/**/*",
+    "integrations/**/*",
+    "package.json",
+    "bun.lockb"
+]
