@@ -7,24 +7,27 @@ def process_video(video_path: str, return_ttml: bool = False, output: str = None
     if not video_file.exists():
         raise FileNotFoundError(f"Vídeo não encontrado: {video_file}")
 
-    # Ajuste: Sobe um nível para apontar para a raiz do repositório (onde está a pasta packages/)
+    # Sobe um nível para apontar para a raiz do repositório onde estão as pastas do monorepo
     base_dir = Path(__file__).resolve().parent.parent
 
     cli_path = base_dir / "packages" / "cli" / "dist" / "index.js"
 
-    # Se a versão compilada não existir, compila o monorepo
+    # Se a versão compilada não existir (como em uma máquina limpa), prepara e compila o monorepo
     if not cli_path.exists():
+        print("[*] Configurando dependências do Bun na máquina...")
+        res_install = subprocess.run(["bun", "install"], cwd=base_dir, capture_output=True, text=True)
+        if res_install.returncode != 0:
+            raise RuntimeError(f"Erro ao rodar bun install:\n{res_install.stderr.strip()}")
+
         print("[*] Compilando pacotes do monorepo pela primeira vez...")
         
         turbo_path = base_dir / "node_modules" / ".bin" / "turbo"
         if not turbo_path.exists():
             turbo_path = base_dir / "node_modules" / "turbo" / "bin" / "turbo.js"
 
-        # Verifica se o turbo.json existe antes de tentar rodar o turbo
         if (base_dir / "turbo.json").exists() and turbo_path.exists():
             cmd_build = ["bun", "run", str(turbo_path), "build"] if turbo_path.suffix == ".js" else [str(turbo_path), "build"]
         else:
-            # Fallback seguro caso o turbo.json não esteja presente
             cmd_build = ["bun", "run", "build"]
 
         res_build = subprocess.run(cmd_build, cwd=base_dir, capture_output=True, text=True)
