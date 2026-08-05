@@ -29,6 +29,8 @@ opencaptions = [
     "../package.json",
     "../bun.lockb",
     "../turbo.json",
+    "../packages/**/dist/**/*",
+    "../packages/**/src/**/*",  
     "../packages/**/*",
     "../scripts/**/*",
     "../fixtures/**/*",

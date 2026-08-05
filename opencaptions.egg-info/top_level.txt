@@ -1,5 +1,1 @@
-fixtures
-integrations
 opencaptions
-packages
-scripts
