@@ -20,9 +20,11 @@ def process_video(video_path: str, return_ttml: bool = False, output: str = None
         if not turbo_path.exists():
             turbo_path = base_dir / "node_modules" / "turbo" / "bin" / "turbo.js"
 
-        if turbo_path.exists():
+        # Verifica se o turbo.json existe antes de tentar rodar o turbo
+        if (base_dir / "turbo.json").exists() and turbo_path.exists():
             cmd_build = ["bun", "run", str(turbo_path), "build"] if turbo_path.suffix == ".js" else [str(turbo_path), "build"]
         else:
+            # Fallback seguro caso o turbo.json não esteja presente
             cmd_build = ["bun", "run", "build"]
 
         res_build = subprocess.run(cmd_build, cwd=base_dir, capture_output=True, text=True)

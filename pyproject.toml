@@ -28,6 +28,7 @@ include = [
 opencaptions = [
     "../package.json",
     "../bun.lockb",
+    "../turbo.json",
     "../packages/**/*",
     "../scripts/**/*",
     "../fixtures/**/*",
